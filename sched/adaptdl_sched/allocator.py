@@ -56,16 +56,13 @@ class AdaptDLAllocator(object):
 
     async def run(self):
         while True:
-            LOG.info("Running allocator loop")
+            LOG.info(">>>>>>> Running allocator loop <<<<<<<")
             nodes, node_template = await self._find_nodes()
-            LOG.info("Node resources: %s",
-                     {k: v.resources for k, v in nodes.items()})
+            LOG.info("Node resources: %s", {k: v.resources for k, v in nodes.items()})
             jobs, prev_allocations = await self._find_jobs_and_allocations()
-            LOG.info("Job resources: %s",
-                     {k: v.resources for k, v in jobs.items()})
+            LOG.info("Job resources: %s", {k: v.resources for k, v in jobs.items()})
             start = time.time()
-            allocations = self._allocate(jobs, nodes, prev_allocations,
-                                         node_template)
+            allocations = self._allocate(jobs, nodes, prev_allocations, node_template)
             duration = time.time() - start
             LOG.info("Allocations (in %.3f sec): %s", duration, allocations)
             await self._update_allocations(allocations)
@@ -122,18 +119,16 @@ class AdaptDLAllocator(object):
         allocations = {}
         current_ts = datetime.now(timezone.utc)
         for job in job_list["items"]:
-            if job.get("status", {}).get("phase") \
-                    not in ["Pending", "Running", "Starting", "Stopping"]:
+            # print(yaml.dump(job))
+            if job.get("status", {}).get("phase") not in ["Pending", "Running", "Starting", "Stopping"]:
                 continue
             if "placement" in job["spec"]:
                 continue
             if "allocation" in job.get("status", {}):
                 namespace = job["metadata"]["namespace"]
                 name = job["metadata"]["name"]
-                allocations[namespace, name] = \
-                    list(job["status"]["allocation"])
-            job["spec"]["template"]["spec"] = \
-                set_default_resources(job["spec"]["template"]["spec"])
+                allocations[namespace, name] = list(job["status"]["allocation"])
+            job["spec"]["template"]["spec"] = set_default_resources(job["spec"]["template"]["spec"])
             resources = get_pod_requests(job["spec"]["template"]["spec"])
             hints = job.get("status", {}).get("train", {})
             max_replicas = max(2 * hints.get("maxProfiledReplicas", 0), 1)
@@ -167,8 +162,7 @@ class AdaptDLAllocator(object):
                     hints.get("gradientAccumulation", False))
             else:
                 speedup_fn = lambda n, r: r  # noqa: E731
-            creation_ts = dateutil.parser.isoparse(
-                    job["metadata"]["creationTimestamp"])
+            creation_ts = dateutil.parser.isoparse(job["metadata"]["creationTimestamp"])
             attained_service = job.get("status", {}).get("attainedService", 0)
             attained_service_ts = job.get("status", {}).get("attainedServiceTimestamp")
             if attained_service_ts:
@@ -177,13 +171,20 @@ class AdaptDLAllocator(object):
                 attained_service += duration * job.get("status", {}).get("replicas", 0)
             namespace = job["metadata"]["namespace"]
             name = job["metadata"]["name"]
-            job_info = JobInfo(resources, speedup_fn, creation_ts,
-                               min_replicas, max_replicas, preemptible)
+            job_info = JobInfo(resources,
+                               speedup_fn,
+                               creation_ts,
+                               min_replicas,
+                               max_replicas,
+                               preemptible)
             job_info.attained_service = attained_service
             job_info.epoch = job.get("status", {}).get("train", {}).get("epoch", 0)
-            job_info.application = APPLICATIONS[job["spec"]["application"]]
-            job_info.target_num_replicas = int(job["spec"]["targetNumReplicas"])
-            job_info.target_batch_size = int(job["spec"]["targetBatchSize"])
+
+            env_dict = {item['name']: item['value'] for item in job["spec"]["template"]["spec"]["containers"][0]["env"]}
+            job_info.application = env_dict.get("APPLICATION", "")
+            job_info.target_num_replicas = int(env_dict.get("targetNumReplicas", 0))
+            job_info.target_batch_size = int(env_dict.get("targetBatchSize", 0))
+
             job_info.num_restarts = job.get("status", {}).get("group") or 0
             job_info.age = (current_ts - creation_ts).total_seconds()
             if POLICY == "optimus":

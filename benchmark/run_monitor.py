@@ -14,7 +14,7 @@ if __name__ == "__main__":
     config.load_kube_config()
     objs_api = client.CustomObjectsApi()
     namespace = config.list_kube_config_contexts()[1]["context"].get("namespace", "default")
-    obj_args = ("esper.petuum.com", "v1", namespace, "esperjobs")
+    obj_args = ("adaptdl.petuum.com", "v1", namespace, "adaptdljobs")
 
     while True:
         obj_list = objs_api.list_namespaced_custom_object(*obj_args)

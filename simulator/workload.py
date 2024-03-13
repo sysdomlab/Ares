@@ -6,7 +6,7 @@ import random
 
 from datetime import datetime, timedelta
 
-from applications import APPLICATIONS
+from policy.applications import APPLICATIONS
 
 
 def generate(num_jobs, start=0, duration=24, seed=0):

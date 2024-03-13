@@ -42,6 +42,7 @@ deploy: push .values.yaml
 delete:
 	helm delete $(RELEASE_NAME)
 	helm delete adaptdl-registry
+	kubectl delete daemonset images
 
 config: .values.yaml
 	$(or $(shell git config --get core.editor),editor) .values.yaml

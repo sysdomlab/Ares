@@ -20,7 +20,7 @@ class JobInfo(object):
         Args:
             resources (dict): Requested resources (eg. GPUs) of each replica.
             speedup_fn (SpeedupFunction): Speedup function for this job.
-            creation_timestamp (datetime): Time when this job was created.
+            creation_timestamp (datetime.datetime): Time when this job was created.
             min_replicas (int): Minimum number of replicas job's guaranteed.
             max_replicas (int): Maximum number of replicas. Maximum should be
                                 greater or equal to Minimum

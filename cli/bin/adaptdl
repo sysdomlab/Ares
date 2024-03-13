@@ -283,10 +283,16 @@ def ls(args, remaining):
             # fromisoformat does not handle the trailing 'Z'
             start_time = datetime.strptime(v["metadata"]["creationTimestamp"],
                                            "%Y-%m-%dT%H:%M:%SZ")
-            current_timestamp = datetime.strptime(
-                v["status"].get("completionTimestamp",
-                                datetime.utcnow().isoformat()),
-                "%Y-%m-%dT%H:%M:%S.%f%z")
+            try:
+                current_timestamp = datetime.strptime(
+                    v["status"].get("completionTimestamp",
+                                    datetime.utcnow().isoformat()),
+                    "%Y-%m-%dT%H:%M:%S.%f")
+            except Exception:
+                current_timestamp = datetime.strptime(
+                    v["status"].get("completionTimestamp",
+                                    datetime.utcnow().isoformat()),
+                    "%Y-%m-%dT%H:%M:%S.%f%z")
             run_time = current_timestamp.replace(tzinfo=None) \
                 - start_time.replace(tzinfo=None)
 
@@ -348,7 +354,7 @@ if __name__ == "__main__":
         "--checkpoint-storage-class", type=str,
         help="storage class of new temporary pvc to create", default=None)
     parser_submit.add_argument(
-        "--proxy-port", type=int, default=59283,  # Some uncommon port.
+        "--proxy-port", type=int, default=32000,  # Some uncommon port.
         help="temporary proxy port used for pushing to the insecure registry")
     parser_submit.set_defaults(handler=submit)
 

@@ -10,22 +10,25 @@ import os
 import numpy as np
 import pandas
 
-from applications import APPLICATIONS
+from policy.applications import APPLICATIONS
 from goodput import GoodputFunction, fit_perf_params
-from speedup import SpeedupFunction
-from utils import JobInfo, NodeInfo
-from pollux import PolluxPolicy
-from optimus import OptimusPolicy
-from tiresias import TiresiasPolicy
+from policy.speedup import SpeedupFunction
+from policy.utils import JobInfo, NodeInfo
+from policy.pollux import PolluxPolicy
+from policy.optimus import OptimusPolicy
+from policy.tiresias import TiresiasPolicy
+
+
+def get_all_policies():
+    return ["tiresias", "optimus", "pollux"]
 
 
 class Job(object):
-
     pretrain = {}
 
     def __init__(self, name, application, submission_time,
                  target_num_replicas=None, target_batch_size=None):
-        self.name = name
+        self.name = ("default", name)
         self.application = application
         self.submission_time = submission_time
         self.target_num_replicas = target_num_replicas
@@ -112,16 +115,13 @@ class Job(object):
             # Calculate current job configurations.
             placement = tuple(filter(None, self.placement))
             num_nodes, num_replicas = len(placement), sum(placement)
-            local_bsz = self.atomic_bsz
             batch_size = num_replicas * self.atomic_bsz * (self.accum_steps + 1)
             scale = batch_size / self.application.init_batch_size
             # Calculate true (simulated) throughput.
-            step_time, sync_time = \
-                self.application.get_throughput(placement, self.atomic_bsz)
+            step_time, sync_time = self.application.get_throughput(placement, self.atomic_bsz)
             accum_time = step_time - sync_time
             # Calculate true (simulated) efficiency.
-            grad_sqr, grad_var = \
-                self.application.get_grad_stats(batch_size, self.epoch)
+            grad_sqr, grad_var = self.application.get_grad_stats(batch_size, self.epoch)
             gain = (grad_var + grad_sqr) / (grad_var / scale + grad_sqr)
             # Update the estimated throughput/efficiency parameters.
             self.update_params(num_nodes, num_replicas, self.atomic_bsz,
@@ -142,13 +142,11 @@ class Job(object):
                 self.epoch += 1
                 delta = round(float((next_progress - self.progress) / goodput))
                 assert delta <= seconds
-                completion_epoch = \
-                    self.application.get_completion_epoch(batch_size)
+                completion_epoch = self.application.get_completion_epoch(batch_size)
                 if self.epoch > completion_epoch:
                     self.completion_time = self.current_time + delta
                 self.progress = next_progress
-                self.best_metric = \
-                    self.application.get_best_metric(batch_size, self.epoch)
+                self.best_metric = self.application.get_best_metric(batch_size, self.epoch)
                 self.current_time += delta
                 self.attained_service += delta * sum(self.placement)
                 seconds -= delta
@@ -171,12 +169,11 @@ class Job(object):
 
 
 class Cluster(object):
-    def __init__(self, workload, policy, min_nodes, num_gpus=4,
+    def __init__(self, workload, policy_name, min_nodes, num_gpus=4,
                  max_nodes=None, interference=0.0,
                  low_util=None, high_util=None):
         assert 1 <= num_gpus <= 4
         self.workload = workload
-        self.policy = policy
         self.min_nodes = self.num_nodes = min_nodes
         self.num_gpus = num_gpus
         self.max_nodes = min_nodes if max_nodes is None else max_nodes
@@ -184,24 +181,26 @@ class Cluster(object):
         self.low_util = low_util
         self.high_util = high_util
         self.current_time = 0
-        if isinstance(policy, PolluxPolicy):
-            self.jobs = [Job(row.name, APPLICATIONS[row.application], row.time)
-                         for row in workload.itertuples()]
-            for job in self.jobs:
-                if job.application.name == "ncf":
-                    job.target_batch_size = 32768
-        elif isinstance(policy, TiresiasPolicy):
-            self.jobs = [Job(row.name, APPLICATIONS[row.application], row.time,
-                             target_num_replicas=row.num_replicas,
-                             target_batch_size=row.batch_size)
-                         for row in workload.itertuples()]
-        elif isinstance(policy, OptimusPolicy):
-            self.jobs = [Job(row.name, APPLICATIONS[row.application], row.time,
-                             target_batch_size=row.batch_size)
-                         for row in workload.itertuples()]
+        self.jobs = [Job(name=row.name,
+                         application=APPLICATIONS[row.application],
+                         submission_time=row.time,
+                         target_num_replicas=None if policy_name in ["pollux"] else row.num_replicas,
+                         target_batch_size=None if policy_name in ["pollux", "optimus"] else row.batch_size)
+                     for row in workload.itertuples()]
+        self.policy = self.get_policy(policy_name)
+
         self.allocations = {}
         self.logs = []
         self.utility = []
+
+    def get_policy(self, policy_name):
+        assert policy_name in get_all_policies()
+        if policy_name == "tiresias":
+            return TiresiasPolicy(lambda: self.current_time)
+        elif policy_name == "optimus":
+            return OptimusPolicy()
+        elif policy_name == "pollux":
+            return PolluxPolicy()
 
     def step(self, seconds=60):
         interfere_nodes = set(idx for idx in range(self.num_nodes)
@@ -232,8 +231,9 @@ class Cluster(object):
             # Optimize allocations.
             node_infos = self.get_node_infos()
             self.allocations = {k: v for k, v in self.allocations.items() if k in job_infos}
-            results = self.policy.optimize(job_infos, node_infos,
-                                           self.allocations, node_infos[0])
+
+            results = self.policy.optimize(job_infos, node_infos, self.allocations, node_infos["0"])
+
             allocations, desired_nodes = results
             used_gpus = collections.Counter(sum(allocations.values(), []))
             assert all(val <= node_infos[key].resources["nvidia.com/gpu"]
@@ -295,8 +295,7 @@ class Cluster(object):
         node_infos = self.get_node_infos(num_nodes)
         if allocations is None:
             policy = copy.deepcopy(self.policy)
-            results = self.policy.optimize(job_infos, node_infos,
-                                           self.allocations)
+            results = self.policy.optimize(job_infos, node_infos, self.allocations)
             allocations = results[0][1]
         sum_speedup = 0.0
         for key, alloc in allocations.items():
@@ -314,7 +313,7 @@ class Cluster(object):
                     job_infos[job.name] = self.get_tiresias_job_info(job)
                 elif isinstance(self.policy, OptimusPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
-                else:
+                elif isinstance(self.policy, PolluxPolicy):
                     job_infos[job.name] = self.get_pollux_job_info(job)
         return job_infos
 
@@ -327,10 +326,7 @@ class Cluster(object):
             min_replicas=0,
             max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
                              job.application.max_batch_size // job.application.min_local_bsz),
-            preemptible=True,
         )
-        if job.application.name == "ncf":
-            job_info.max_replicas = 1
         job_info.num_restarts = job.num_restarts or 0
         job_info.age = self.current_time - job.submission_time
         return job_info
@@ -338,17 +334,14 @@ class Cluster(object):
     def get_optimus_job_info(self, job):
         job_info = JobInfo(
             resources={"nvidia.com/gpu": 1},
-            speedup_fn=job.get_speedup_fn(),
+            speedup_fn=None,
             creation_timestamp=job.submission_time,
             attained_service=job.attained_service,
             min_replicas=0,
-            #max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
+            # max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
             #                 job.target_batch_size // job.application.min_local_bsz),
             max_replicas=(job.target_batch_size // job.application.min_local_bsz),
-            preemptible=True,
         )
-        if job.application.name == "ncf":
-            job_info.max_replicas = 1
         job_info.epoch = job.epoch
         job_info.application = job.application
         job_info.target_batch_size = job.target_batch_size
@@ -362,12 +355,11 @@ class Cluster(object):
             attained_service=job.attained_service,
             min_replicas=0,
             max_replicas=job.target_num_replicas,
-            preemptible=True,
         )
 
     def get_node_infos(self, num_nodes=None):
         return {
-            idx: NodeInfo({"nvidia.com/gpu": self.num_gpus}, preemptible=False)
+            f"{idx}": NodeInfo({"nvidia.com/gpu": self.num_gpus}, preemptible=False)
             for idx in range(num_nodes or self.num_nodes)
         }
 
@@ -390,13 +382,7 @@ class Cluster(object):
 
 def simulate(args):
     workload = pandas.read_csv(args.workload)
-    if args.policy == "tiresias":
-        policy = TiresiasPolicy(lambda: simulator.current_time)
-    elif args.policy == "optimus":
-        policy = OptimusPolicy()
-    else:
-        policy = PolluxPolicy()
-    simulator = Cluster(workload, policy, args.min_nodes, num_gpus=args.num_gpus,
+    simulator = Cluster(workload, args.policy, args.min_nodes, num_gpus=args.num_gpus,
                         max_nodes=args.max_nodes, interference=args.interference,
                         low_util=args.low_util, high_util=args.high_util)
     while not simulator.all_complete():
@@ -407,11 +393,11 @@ def simulate(args):
         for val in simulator.logs[-1]["submitted_jobs"]:
             if val["submission_time"] <= simulator.current_time and val["completion_time"] is None:
                 print("    {}:\t[epoch {}]\t[restarts {}]\t[batch size {}]\t[placement {}]".format(
-                      val["name"], val["epoch"], val["num_restarts"], val["batch_size"], val["placement"]))
+                    val["name"], val["epoch"], val["num_restarts"], val["batch_size"], val["placement"]))
         used_gpus = sum(map(len, simulator.allocations.values()))
         print("GPU utilization: {}".format(used_gpus))
-        print("Completed jobs:")
         jct_dict = simulator.get_jcts()
+        print(f"Completed jobs [{len(jct_dict)}]:")
         print(jct_dict)
         print("Average JCT:", sum(jct_dict.values()) / len(jct_dict) if jct_dict else 0)
     if args.output:
@@ -423,7 +409,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("workload", type=str, help="path to workload csv")
     parser.add_argument("--policy", type=str, default="pollux",
-                        choices=["tiresias", "optimus", "pollux"])
+                        choices=get_all_policies())
     parser.add_argument("--min-nodes", type=int, default=16,
                         help="min number of nodes in the cluster")
     parser.add_argument("--max-nodes", type=int, default=None,

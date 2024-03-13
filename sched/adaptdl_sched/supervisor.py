@@ -95,5 +95,5 @@ if __name__ == "__main__":
     logging.basicConfig()
     kubernetes.config.load_incluster_config()
 
-    supervisor = Supervisor(get_supervisor_port())
+    supervisor = Supervisor(int(get_supervisor_port()))
     supervisor.run()

@@ -10,8 +10,7 @@ class OptimusPolicy(object):
     def optimize(self, jobs, nodes, prev_allocations, node_template):
         allocations = {k: v for k, v in prev_allocations.items() if k in jobs}
         for job in jobs.values():
-            completion_epoch = job.application.get_completion_epoch(
-                    job.target_batch_size)
+            completion_epoch = job.application.get_completion_epoch(job.target_batch_size)
             if completion_epoch <= job.epoch:
                 job.remaining = 1
             else:

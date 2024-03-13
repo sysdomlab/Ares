@@ -18,7 +18,7 @@ def build_images(models, repository):
     templates = {}
     for model in models:
         with open(os.path.join(models_dir, model, "adaptdljob.yaml")) as f:
-            template = yaml.load(f)
+            template = yaml.load(f, Loader=yaml.FullLoader)
         dockerfile = os.path.join(models_dir, model, "Dockerfile")
         image = repository + ":" + model
         subprocess.check_call(["docker", "build", "-t", image, project_root, "-f", dockerfile])
@@ -83,7 +83,6 @@ if __name__ == "__main__":
 
     objs_api = client.CustomObjectsApi()
     namespace = config.list_kube_config_contexts()[1]["context"].get("namespace", "default")
-    obj_args = ("adaptdl.petuum.com", "v1", namespace, "adaptdljobs")
 
     print("start workload")
     start = time.time()
@@ -119,10 +118,13 @@ if __name__ == "__main__":
         env.append({"name": "ADAPTDL_CHECKPOINT_PATH", "value": "/pollux/checkpoint"})
         env.append({"name": "ADAPTDL_TENSORBOARD_LOGDIR", "value": "/pollux/tensorboard"})
         env.append({"name": "APPLICATION", "value": row.application})
+        env.append({"name": "targetNumReplicas", "value": f"{row.num_replicas}"})
+        env.append({"name": "targetBatchSize", "value": f"{row.batch_size}"})
         if args.policy in ["tiresias"]:
             job["spec"]["minReplicas"] = job["spec"]["maxReplicas"] = row.num_replicas
             env.append({"name": "TARGET_NUM_REPLICAS", "value": str(row.num_replicas)})
         if args.policy in ["tiresias", "optimus"]:
             env.append({"name": "TARGET_BATCH_SIZE", "value": str(row.batch_size)})
         print(yaml.dump(job))
-        objs_api.create_namespaced_custom_object(*obj_args, job)
+        objs_api.create_namespaced_custom_object(
+            "adaptdl.petuum.com", "v1", namespace, "adaptdljobs", job)
