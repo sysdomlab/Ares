@@ -216,18 +216,6 @@ class Cluster(object):
         assert all(job.current_time == self.current_time for job in self.jobs)
         job_infos = self.get_job_infos()
         if job_infos:
-            if self.max_nodes > self.min_nodes:
-                # Autoscale cluster if needed.
-                self.utility.append(self.get_utility(self.num_nodes, job_infos, self.allocations))
-                if len(self.utility) > 15:
-                    self.utility.pop(0)
-                    utility = sum(self.utility) / len(self.utility)
-                    if (self.num_nodes > self.min_nodes and utility < self.low_util) or \
-                            (self.num_nodes < self.max_nodes and utility > self.high_util):
-                        self.autoscale(job_infos)
-                        self.utility.clear()
-                    print("Utility:", utility)
-                print("Nodes:", self.num_nodes)
             # Optimize allocations.
             node_infos = self.get_node_infos()
             self.allocations = {k: v for k, v in self.allocations.items() if k in job_infos}
@@ -269,41 +257,6 @@ class Cluster(object):
                 for job in self.jobs if job.submission_time <= self.current_time
             ],
         })
-
-    def autoscale(self, job_infos):
-        target_utility = (self.low_util + self.high_util) / 2
-        min_nodes = self.min_nodes
-        max_nodes = self.max_nodes
-        num_nodes = self.num_nodes
-        while min_nodes + 1 < max_nodes:
-            utility = self.get_utility(num_nodes, job_infos)
-            if utility < target_utility:
-                max_nodes = num_nodes
-            elif utility > target_utility:
-                min_nodes = num_nodes
-            else:
-                break
-            num_nodes = (min_nodes + max_nodes) // 2
-        min_util = self.get_utility(min_nodes, job_infos)
-        max_util = self.get_utility(max_nodes, job_infos)
-        if abs(target_utility - min_util) < abs(target_utility - max_util):
-            self.num_nodes = min_nodes
-        else:
-            self.num_nodes = max_nodes
-
-    def get_utility(self, num_nodes, job_infos, allocations=None):
-        node_infos = self.get_node_infos(num_nodes)
-        if allocations is None:
-            policy = copy.deepcopy(self.policy)
-            results = self.policy.optimize(job_infos, node_infos, self.allocations)
-            allocations = results[0][1]
-        sum_speedup = 0.0
-        for key, alloc in allocations.items():
-            if key in job_infos:
-                speedup_fn = job_infos[key].speedup_fn
-                speedup = speedup_fn(len(set(alloc)), len(alloc))
-                sum_speedup += speedup
-        return sum_speedup / (num_nodes * self.num_gpus)
 
     def get_job_infos(self):
         job_infos = {}
