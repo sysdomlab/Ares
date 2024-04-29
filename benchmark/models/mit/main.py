@@ -96,7 +96,7 @@ def main_worker(args):
     # create model
     print("=> creating model '{}'".format(args.arch))
     model = models.__dict__[args.arch](pretrained=True)
-    # model.fc = nn.Linear(model.fc.in_features, args.classes)
+    model.fc = nn.Linear(model.fc.in_features, args.classes)
     model = model.cuda()
 
     # define loss function (criterion) and optimizer

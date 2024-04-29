@@ -78,7 +78,8 @@ if __name__ == "__main__":
 
     config.load_kube_config()
 
-    templates = build_images(["bert", "cifar10", "deepspeech2", "imagenet", "ncf", "yolov3"], args.repository)
+    # templates = build_images(["bert", "cifar10", "deepspeech2", "imagenet", "ncf", "yolov3", "mit"], args.repository)
+    templates = build_images(["imagenet", "mit"], args.repository)
     cache_images(templates)
 
     objs_api = client.CustomObjectsApi()
@@ -93,11 +94,11 @@ if __name__ == "__main__":
         job = copy.deepcopy(templates[row.application])
         job["metadata"].pop("generateName")
         job["metadata"]["name"] = row.name
-        job["spec"].update({
-            "application": row.application,
-            "targetNumReplicas": row.num_replicas,
-            "targetBatchSize": row.batch_size,
-        })
+        # job["spec"].update({
+        #     "application": row.application,
+        #     "targetNumReplicas": row.num_replicas,
+        #     "targetBatchSize": row.batch_size,
+        # })
         volumes = job["spec"]["template"]["spec"].setdefault("volumes", [])
         volumes.append({
             "name": "pollux",

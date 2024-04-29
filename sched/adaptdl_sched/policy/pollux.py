@@ -27,6 +27,8 @@ from pymoo.algorithms.nsga2 import NSGA2
 from pymoo.operators.crossover.util import crossover_mask
 from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
 
+from adaptdl_sched.policy.athena import AthenaPolicy
+
 LOG = logging.getLogger(__name__)
 LOG.setLevel(logging.INFO)
 
@@ -39,6 +41,8 @@ class PolluxPolicy(object):
         # Utilization thresholds for cluster autoscaling.
         self._min_util = 0.35
         self._max_util = 0.65
+
+        self.policy = AthenaPolicy()
 
     def _allocations_to_state(self, allocations, jobs, nodes):
         jobs_index = {key: idx for idx, key in enumerate(jobs)}
@@ -113,6 +117,8 @@ class PolluxPolicy(object):
         return int(best_nodes)
 
     def optimize(self, jobs, nodes, base_allocations, node_template):
+        return self.policy.optimize(jobs, nodes, base_allocations, node_template)
+
         """
         Run one optimization cycle of the Pollux scheduling policy.
 

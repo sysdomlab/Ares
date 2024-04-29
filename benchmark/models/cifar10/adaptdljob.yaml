@@ -17,12 +17,12 @@ spec:
         resources:
           limits:
             nvidia.com/gpu: 1
-            cpu: 10
-            memory: "40G"
+            cpu: 2
+            memory: "8G"
           requests:
             nvidia.com/gpu: 1
-            cpu: 10
-            memory: "40G"
+            cpu: 2
+            memory: "8G"
         volumeMounts:
         - name: data
           mountPath: /mnt

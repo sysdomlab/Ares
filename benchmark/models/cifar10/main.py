@@ -78,7 +78,7 @@ optimizer = optim.SGD(net.parameters(),
                       lr=args.lr, momentum=0.9, weight_decay=5e-4)
 lr_scheduler = ExponentialLR(optimizer, 0.0133 ** (1.0 / args.epochs))
 
-adaptdl.torch.init_process_group("nccl")
+adaptdl.torch.init_process_group("gloo")
 net = adaptdl.torch.AdaptiveDataParallel(net, optimizer, lr_scheduler)
 
 # Training

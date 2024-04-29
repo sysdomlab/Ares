@@ -1,7 +1,7 @@
 apiVersion: adaptdl.petuum.com/v1
 kind: AdaptDLJob
 metadata:
-  generateName: imagenet-
+  generateName: mit-
 spec:
   template:
     spec:
@@ -11,14 +11,14 @@ spec:
         - python3
         - /root/imagenet/main.py
         - --arch=resnet50
-        - --classes=1000
+        - --classes=365
         - --batch-size=200
         - --lr=0.008
-        - --epochs=2
+        - --epochs=6
         - --autoscale-bsz
-#        - /mnt/ImageNet
-#        - /data/ImageNet
-        - /juicefs/ImageNet
+#        - /mnt/mit
+#        - /data/mit
+        - /juicefs/mit
         env:
         - name: PYTHONUNBUFFERED
           value: "true"
