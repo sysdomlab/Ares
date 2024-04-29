@@ -36,6 +36,14 @@ class JobInfo(object):
         self.min_replicas = min_replicas
         self.preemptible = preemptible
 
+        self.attained_service = 0
+        self.epoch = 0
+        self.application = ""
+        self.target_num_replicas = 0
+        self.target_batch_size = 0
+        self.num_restarts = 0
+        self.age = 0
+
 
 class NodeInfo(object):
     def __init__(self, resources, preemptible):

@@ -20,6 +20,24 @@ def memoize(f):
     return helper
 
 
+def retry(func):
+    def wrapper(self, placement, local_bsz):
+        try_list = [1, 2, 1 / 2, 4, 1 / 4, 8, 1 / 8, 16, 1 / 16, 32, 1 / 32, 64, 1 / 64]
+        has_err = False
+        for i, scale in enumerate(try_list):
+            try:
+                assert int(local_bsz / scale) != 0
+                step_time, sync_time = func(self, placement, int(local_bsz / scale))
+                if has_err:
+                    print(f"Retry succeeded with placement {placement}, local_bsz {local_bsz}")
+                return (step_time - sync_time) * scale + sync_time, sync_time
+            except Exception as err:
+                has_err = True
+                if i == len(try_list) - 1:
+                    raise err
+    return wrapper
+
+
 class Application(object):
     def __init__(self, trace_dir,
                  init_batch_size=None, max_batch_size=None,
@@ -40,9 +58,9 @@ class Application(object):
         self.scalability = \
             pandas.read_csv(os.path.join(trace_dir, "scalability.csv"))
         self.init_batch_size = init_batch_size or min(self.validation)
-        self.max_batch_size = max_batch_size or max(self.validation)
+        self.max_batch_size = max_batch_size or max(self.validation)  # global batch size
         self.min_local_bsz = min_local_bsz or self.placements.local_bsz.min()
-        self.max_local_bsz = max_local_bsz or self.placements.local_bsz.max()
+        self.max_local_bsz = max_local_bsz or self.placements.local_bsz.max()  # local atomic batch size
         assert self.max_batch_size >= self.min_local_bsz
         self.max_epochs = max_epochs or min(map(len, self.validation.values()))
         self.target_metric = target_metric
@@ -202,6 +220,7 @@ class Application(object):
         return sqr, var
 
     @memoize
+    @retry
     def get_throughput(self, placement, local_bsz):
         # Normalize placement to the lexicographically smallest rotation.
         placement = tuple(filter(None, placement))
@@ -210,7 +229,9 @@ class Application(object):
         placement_id = int("".join(map(str, placement)))
         xs = ["num_nodes", "num_replicas", "local_bsz"]
         ys = ["step_time", "sync_time"]
-        if placement_id in self.placements.placement.values:
+        # print(f">>> placement_id in self.placements.placement.values: {placement_id in self.placements.placement.values}")
+        if (placement_id in self.placements.placement.values
+                and local_bsz in self.placements[self.placements.placement == placement_id].local_bsz.values):
             # Found in placement traces, interpolate between local_bsz.
             df = self.placements[self.placements.placement == placement_id]
             interpolator = interp1d(df.local_bsz.values, df[ys].values, axis=0)
@@ -220,9 +241,11 @@ class Application(object):
             df = self.placements.groupby(xs)[xs + ys].mean()
             df = df.append(self.scalability, ignore_index=True)
             num_nodes, num_replicas = len(placement), sum(placement)
+            # print(f">>> num_nodes: {num_nodes}, num_replicas: {num_replicas}")
             num_nodes = min(num_nodes, 16)
             interpolator = LinearNDInterpolator(df[xs].values, df[ys].values)
             ret = interpolator([num_nodes, num_replicas, local_bsz])[0]
+        # print(f">>> ret: {ret}")
         assert sum(ret) == sum(ret), "{} {} {}".format(self.name, placement, local_bsz)
         return ret
 

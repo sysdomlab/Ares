@@ -1,7 +1,9 @@
 name,time,application,num_replicas,batch_size
-imagenet-11,1604,imagenet,32,6400
-imagenet-12,1604,imagenet,32,6400
-imagenet-126,2108,imagenet,24,3200
-imagenet-122,2108,imagenet,24,3200
-imagenet-156,2686,imagenet,32,6400
-imagenet-157,2730,imagenet,32,6400
+imagenet-1,0,imagenet,32,12800
+imagenet-2,0,imagenet,32,12800
+imagenet-3,0,imagenet,32,12800
+imagenet-4,0,imagenet,32,12800
+imagenet-5,0,imagenet,32,12800
+imagenet-6,0,imagenet,32,12800
+imagenet-7,0,imagenet,32,12800
+imagenet-8,0,imagenet,32,12800

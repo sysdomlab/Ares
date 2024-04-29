@@ -17,10 +17,14 @@ from policy.utils import JobInfo, NodeInfo
 from policy.pollux import PolluxPolicy
 from policy.optimus import OptimusPolicy
 from policy.tiresias import TiresiasPolicy
+from policy.fifo import FIFOPolicy
+from policy.athena import AthenaPolicy
+from policy.cfq import CFQPolicy
+from policy.sjf import SJFPolicy
 
 
 def get_all_policies():
-    return ["tiresias", "optimus", "pollux"]
+    return ["tiresias", "optimus", "pollux", "fifo", "sjf", "athena", "cfq"]
 
 
 class Job(object):
@@ -127,10 +131,16 @@ class Job(object):
             self.update_params(num_nodes, num_replicas, self.atomic_bsz,
                                step_time, sync_time, grad_sqr, grad_var)
             # Calculate true (simulated) goodput.
-            total_time = step_time + accum_time * self.accum_steps
-            goodput = gain / total_time * (1.0 - interference)
+            total_time = step_time + accum_time * self.accum_steps  # sec per iter
+            # goodput = gain / total_time * (1.0 - interference)  # progress per iter * iter per sec
+            goodput = scale / total_time * (1.0 - interference)  # progress per iter * iter per sec
             # Update current epoch and progress.
-            next_progress = self.application.get_progress(self.epoch + 1)
+            next_progress = self.application.get_progress(self.epoch + 1)  # get_progress 返回的是标准 iter 数
+            # print(f"<<< job: {self.name}, self.epoch: {self.epoch}, \n"
+            #       f"scale: {scale}, gain: {gain}, num_replicas: {num_replicas}, \n"
+            #       f"goodput: {goodput}, "
+            #       f"total_time: {total_time}, "
+            #       f"next_progress: {next_progress}")
             if self.progress + goodput * seconds < next_progress:
                 # Used up the entire time interval without finishing an epoch.
                 self.progress += goodput * seconds
@@ -184,8 +194,9 @@ class Cluster(object):
         self.jobs = [Job(name=row.name,
                          application=APPLICATIONS[row.application],
                          submission_time=row.time,
-                         target_num_replicas=None if policy_name in ["pollux"] else row.num_replicas,
-                         target_batch_size=None if policy_name in ["pollux", "optimus"] else row.batch_size)
+                         target_num_replicas=None if policy_name in [] else row.num_replicas,
+                         target_batch_size=None if policy_name in [] else APPLICATIONS[row.application].max_batch_size)
+                         # target_batch_size=None if policy_name in [] else row.batch_size)
                      for row in workload.itertuples()]
         self.policy = self.get_policy(policy_name)
 
@@ -201,6 +212,14 @@ class Cluster(object):
             return OptimusPolicy()
         elif policy_name == "pollux":
             return PolluxPolicy()
+        elif policy_name == "fifo":
+            return FIFOPolicy()
+        elif policy_name == "sjf":
+            return SJFPolicy()
+        elif policy_name == "athena":
+            return AthenaPolicy()
+        elif policy_name == "cfq":
+            return CFQPolicy(lambda: self.current_time, self.num_gpus * self.min_nodes)
 
     def step(self, seconds=60):
         interfere_nodes = set(idx for idx in range(self.num_nodes)
@@ -268,6 +287,14 @@ class Cluster(object):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, PolluxPolicy):
                     job_infos[job.name] = self.get_pollux_job_info(job)
+                elif isinstance(self.policy, FIFOPolicy):
+                    job_infos[job.name] = self.get_optimus_job_info(job)
+                elif isinstance(self.policy, SJFPolicy):
+                    job_infos[job.name] = self.get_optimus_job_info(job)
+                elif isinstance(self.policy, AthenaPolicy):
+                    job_infos[job.name] = self.get_optimus_job_info(job)
+                elif isinstance(self.policy, CFQPolicy):
+                    job_infos[job.name] = self.get_optimus_job_info(job)
         return job_infos
 
     def get_pollux_job_info(self, job):
@@ -287,13 +314,13 @@ class Cluster(object):
     def get_optimus_job_info(self, job):
         job_info = JobInfo(
             resources={"nvidia.com/gpu": 1},
-            speedup_fn=None,
+            speedup_fn=job.get_speedup_fn(),
             creation_timestamp=job.submission_time,
             attained_service=job.attained_service,
             min_replicas=0,
-            # max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
-            #                 job.target_batch_size // job.application.min_local_bsz),
-            max_replicas=(job.target_batch_size // job.application.min_local_bsz),
+            max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
+                             job.application.max_batch_size // job.application.min_local_bsz),
+            # max_replicas=(job.target_batch_size // job.application.min_local_bsz),
         )
         job_info.epoch = job.epoch
         job_info.application = job.application
@@ -353,15 +380,17 @@ def simulate(args):
         print(f"Completed jobs [{len(jct_dict)}]:")
         print(jct_dict)
         print("Average JCT:", sum(jct_dict.values()) / len(jct_dict) if jct_dict else 0)
-    if args.output:
-        simulator.output_logs(args.output)
+    # if args.output:
+    #     simulator.output_logs(args.output)
     return simulator.logs, simulator.get_jcts()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("workload", type=str, help="path to workload csv")
-    parser.add_argument("--policy", type=str, default="pollux",
+    parser.add_argument("--workload", type=str, help="path to workload csv",
+                        default="./workload/workloads-1.0/workload-1.csv")
+                        # default="./workload/workloads-1.0/workload-debug.csv")
+    parser.add_argument("--policy", type=str, default="cfq",
                         choices=get_all_policies())
     parser.add_argument("--min-nodes", type=int, default=16,
                         help="min number of nodes in the cluster")
@@ -377,7 +406,7 @@ if __name__ == "__main__":
                         help="low utility threshold")
     parser.add_argument("--high-util", type=float,
                         help="high utility threshold")
-    parser.add_argument("--output", type=str,
+    parser.add_argument("--output", type=str, default="./simulator_logs",
                         help="path to output logs")
     args = parser.parse_args()
     if os.path.isdir(args.workload):
