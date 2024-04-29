@@ -1,5 +1,6 @@
 import os
 import subprocess
+from time import sleep
 
 import numpy as np
 import pandas as pd
@@ -44,36 +45,6 @@ def get_jct_from_raw_log(wl_set):
             "res": res
         })
     return results_data
-
-
-def get_markdown_table(src):
-    # 使用 pivot_table 函数将数据框重塑为行索引为工作负载，列索引为算法的表格
-    pivot_table = src.pivot_table(index="workload", columns="algo", values="res")
-    markdown_table = pivot_table.to_markdown()  # 将 pivot_table 转换为 markdown 格式的表格
-    return markdown_table
-
-
-def plot_grouped_bar(src, wl_set, metric):
-    # Set the style of the plot
-    plt.style.use('ggplot')
-
-    # Grouping the data by 'workload' and 'algo' and calculating mean JCT
-    grouped_df = src.groupby(['workload', 'algo'])['res'].mean().unstack()
-
-    # Plotting the bar chart
-    grouped_df.plot(kind='bar', figsize=(10, 6))
-
-    # Adding labels and title
-    plt.title(f'{metric} for Each Algorithm Under Each Workload of {wl_set}')
-    plt.xlabel('Workload')
-    plt.ylabel(f'{metric}(h)')
-    plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
-
-    # Showing the plot
-    plt.legend(title='Algorithm', bbox_to_anchor=(1, 1))
-    plt.tight_layout()  # Adjust layout to prevent clipping of labels
-    plt.savefig(f"{wl_set}/{metric}.jpg")
-    plt.show()
 
 
 def get_p99_jct_from_raw_log(wl_set):
@@ -128,12 +99,42 @@ def get_makespan_from_raw_log(wl_set):
     return results_data
 
 
+def get_markdown_table(src):
+    # 使用 pivot_table 函数将数据框重塑为行索引为工作负载，列索引为算法的表格
+    pivot_table = src.pivot_table(index="workload", columns="algo", values="res")
+    markdown_table = pivot_table.to_markdown()  # 将 pivot_table 转换为 markdown 格式的表格
+    return markdown_table
+
+
+def plot_grouped_bar(src, wl_set, metric):
+    # Set the style of the plot
+    plt.style.use('ggplot')
+
+    # Grouping the data by 'workload' and 'algo' and calculating mean JCT
+    grouped_df = src.groupby(['workload', 'algo'])['res'].mean().unstack()
+
+    # Plotting the bar chart
+    grouped_df.plot(kind='bar', figsize=(10, 6))
+
+    # Adding labels and title
+    plt.title(f'{metric} for Each Algorithm Under Each Workload of {wl_set}')
+    plt.xlabel('Workload')
+    plt.ylabel(f'{metric}(h)')
+    plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
+
+    # Showing the plot
+    plt.legend(title='Algorithm', bbox_to_anchor=(1, 1))
+    plt.tight_layout()  # Adjust layout to prevent clipping of labels
+    plt.savefig(f"{wl_set}/{metric}.jpg")
+    plt.show()
+
+
 def get_all_jct_from_raw_log(wl_set):
     results_data = defaultdict(dict)
     for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
         workload = file.split("/")[-2].split("-")[-1]
         algo = file.split("/")[-1].split(".")[0]
-        print(f"Workload: {workload}, Algorithm: {algo}")
+        # print(f"Workload: {workload}, Algorithm: {algo}")
 
         result = subprocess.run(
             ["tail", "-n", "2", file],
@@ -142,7 +143,7 @@ def get_all_jct_from_raw_log(wl_set):
         )
 
         res_dict: dict = eval(result.stdout.split("\n")[0])
-        print(res_dict)
+        # print(res_dict)
 
         results_data[workload][algo] = res_dict
     return results_data
@@ -154,7 +155,7 @@ def get_fair_jct_from_raw_log(wl_set):
         if "cfq" not in file:
             continue
         workload = file.split("/")[-2].split("-")[-1]
-        print(workload, file)
+        # print(workload, file)
 
         result = "{}"
         with open(file, 'r') as f:
@@ -162,13 +163,13 @@ def get_fair_jct_from_raw_log(wl_set):
                 if "[GPSSystem]" in line and "Average JCT" not in line and "SIMULATOR TIME" not in line:
                     result = line.replace("[GPSSystem]", "")
         res_dict: dict = eval(result)
-        print(res_dict)
+        # print(res_dict)
 
         results_data[workload] = res_dict
     return results_data
 
 
-def calculate_jct_ratio(jct_data, fair_jct_data):
+def calculate_ftf(jct_data, fair_jct_data):
     jct_ratio_data = {}
     for workload, algo_data in jct_data.items():
         jct_ratio_data[workload] = {}
@@ -180,26 +181,61 @@ def calculate_jct_ratio(jct_data, fair_jct_data):
     return jct_ratio_data
 
 
-def plot_cdf(data):
+def plot_cdf(data, wl_set):
     # Set the style of the plot
-    plt.style.use('ggplot')
-    for workload, algorithm in data.items():
-        for a, j in algorithm.items():
-            print(f"workload-{workload}, {a}: \t"
-                  f"avg {sum(j.values()) / len(j):.2f}, max {max(j.values()):.2f}, min {min(j.values()):.2f}")
-            jct_values = list(j.values())
-            sorted_jct_values = np.sort(jct_values)
-            yvals = np.arange(len(sorted_jct_values)) / float(len(sorted_jct_values) - 1)
-            plt.plot(sorted_jct_values, yvals, label=f"workload-{workload}, {a}")
+    for workload, v in data.items():
+        plt.style.use('ggplot')
+        print(wl_set)
+        for algorithm, job in v.items():
+            print(f"workload-{workload}, {algorithm}: \t"
+                  f"avg {sum(job.values()) / len(job):.2f}, max {max(job.values()):.2f}, min {min(job.values()):.2f}")
+            sorted_ftf_values = np.sort(list(job.values()))
+            yvals = np.arange(len(sorted_ftf_values)) / float(len(sorted_ftf_values))
+            plt.plot(sorted_ftf_values, yvals, label=algorithm)
 
-        plt.title(f"CDF of Job Completion Time for Workload Set: {workload}")
+        plt.title(f"CDF of FTF for {wl_set}/workload-{workload}")
         plt.xlabel("Job Completion Time (hours)")
         plt.ylabel("CDF")
         plt.legend()
         plt.grid(True)
+        plt.xscale('log')
         plt.tight_layout()  # Adjust layout to prevent clipping of labels
         plt.show()
-        input()
+        plt.savefig(f"{wl_set}/workload-{workload}.jpg")
+        sleep(1)
+
+
+def plot_grouped_bar_with_error_bars(src, wl_set, metric):
+    # Set the style of the plot
+    plt.style.use('ggplot')
+
+    # Grouping the data by 'workload' and 'algo' and calculating mean JCT
+    grouped_df = src.groupby(['workload', 'algo'])['res'].mean().unstack()
+    # Calculating error (min and max)
+    min_values = src.groupby(['workload', 'algo'])['min'].mean().unstack()
+    max_values = src.groupby(['workload', 'algo'])['max'].mean().unstack()
+    errors = np.stack([min_values.values, max_values.values], axis=2)
+    errors = np.transpose(errors, (1, 2, 0))
+
+    # Plotting the bar chart with error bars
+    fig, ax = plt.subplots(figsize=(10, 6))
+    # print(errors.shape)  # (8, 5, 2)
+    # grouped_df.plot(kind='bar', ax=ax, yerr=errors, capsize=5)  # (5, 2, 8)
+    grouped_df.plot(kind='bar', ax=ax, capsize=5)  # (5, 2, 8)
+
+    # Adding labels and title
+    plt.title(f'{metric} for Each Algorithm Under Each Workload of {wl_set}')
+    plt.xlabel('Workload')
+    plt.ylabel(f'{metric}')
+    plt.xticks(rotation=45)  # Rotate x-axis labels for better readability
+
+    # Showing the plot
+    plt.legend(title='Algorithm', bbox_to_anchor=(1, 1))
+    plt.yscale('log')
+    plt.tight_layout()  # Adjust layout to prevent clipping of labels
+    plt.savefig(f"{wl_set}/{metric}.jpg")
+    plt.show()
+
 
 
 if __name__ == '__main__':
@@ -226,12 +262,28 @@ if __name__ == '__main__':
         # plot_grouped_bar(df, workload_set, "Makespan")
 
         # 4. finish time fairness
-        results_data = get_all_jct_from_raw_log(workload_set)
-        # print(results_data["1"]["cfq"])
+        #   4.1 FTF CDF
+        real_jct = get_all_jct_from_raw_log(workload_set)
         fair_jct = get_fair_jct_from_raw_log(workload_set)
-        # print(fair_jct["1"])
-        ftf = calculate_jct_ratio(results_data, fair_jct)
-        # print(f"ftf: {ftf.values()}")
-        plot_cdf(ftf)
+        ftf = calculate_ftf(real_jct, fair_jct)
+        plot_cdf(ftf, workload_set)
+
+        #   4.1 FTF bar chart
+        results_data = []
+        for workload, algo_data in ftf.items():
+            for algo, job in algo_data.items():
+                avg_ftf = sum(job.values()) / len(job)
+                max_ftf = max(job.values())
+                min_ftf = min(job.values())
+                for job_id, ftf_value in job.items():
+                    results_data.append({
+                        "workload": workload,
+                        "algo": algo,
+                        "res": avg_ftf,
+                        "min": min_ftf,
+                        "max": max_ftf
+                    })
+        df = pd.DataFrame(results_data)
+        plot_grouped_bar_with_error_bars(df, workload_set, "FTF")
 
         pass

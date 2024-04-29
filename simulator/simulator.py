@@ -3,6 +3,8 @@ import collections
 import copy
 import glob
 import json
+import time
+
 import math
 import multiprocessing
 import os
@@ -428,4 +430,7 @@ if __name__ == "__main__":
         with open(args.output + "/summary.json", "w") as f:
             json.dump(summary, f, indent=4)
     else:
+        t1 = time.time()
         simulate(args)
+        t2 = time.time()
+        print("Total time:", t2 - t1)
