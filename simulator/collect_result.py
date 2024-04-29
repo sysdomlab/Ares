@@ -88,7 +88,7 @@ def get_makespan_from_raw_log(wl_set):
         with open(file, 'r') as f:
             for line in f:
                 if "SIMULATOR TIME" in line:
-                    simulator_time = int(line.split(":")[-1].strip().split(" ")[0]) / 60 / 60
+                    simulator_time = float(line.split(":")[-1].strip().split(" ")[0]) / 60 / 60
                     # print(simulator_time)
         # 将结果数据添加到列表中
         results_data.append({
@@ -194,7 +194,7 @@ def plot_cdf(data, wl_set):
             plt.plot(sorted_ftf_values, yvals, label=algorithm)
 
         plt.title(f"CDF of FTF for {wl_set}/workload-{workload}")
-        plt.xlabel("Job Completion Time (hours)")
+        plt.xlabel("Finish Time Fairness (FTF)")
         plt.ylabel("CDF")
         plt.legend()
         plt.grid(True)
@@ -202,7 +202,7 @@ def plot_cdf(data, wl_set):
         plt.tight_layout()  # Adjust layout to prevent clipping of labels
         plt.show()
         plt.savefig(f"{wl_set}/workload-{workload}.jpg")
-        sleep(1)
+        sleep(0.5)
 
 
 def plot_grouped_bar_with_error_bars(src, wl_set, metric):
@@ -237,29 +237,28 @@ def plot_grouped_bar_with_error_bars(src, wl_set, metric):
     plt.show()
 
 
-
 if __name__ == '__main__':
     # 切换到日志目录
-    os.chdir(f"../simulator/simulator_logs/0.75_MaxBsz")
+    os.chdir(f"../simulator/simulator_logs/0.75_RowBsz")
 
     workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
     for workload_set in workload_sets:
-        # # 1. avg jct
-        # results_data = get_jct_from_raw_log(workload_set)
-        # df = pd.DataFrame(results_data)
-        # # print(df)
-        # # print(get_markdown_table(df))
-        # plot_grouped_bar(df, workload_set, "Avg_JCT")
+        # 1. avg jct
+        results_data = get_jct_from_raw_log(workload_set)
+        df = pd.DataFrame(results_data)
+        # print(df)
+        # print(get_markdown_table(df))
+        plot_grouped_bar(df, workload_set, "Avg_JCT")
 
-        # # 2. p99 jct
-        # results_data = get_p99_jct_from_raw_log(workload_set)
-        # df = pd.DataFrame(results_data)
-        # plot_grouped_bar(df, workload_set, "P99_JCT")
+        # 2. p99 jct
+        results_data = get_p99_jct_from_raw_log(workload_set)
+        df = pd.DataFrame(results_data)
+        plot_grouped_bar(df, workload_set, "P99_JCT")
 
-        # # 3. Makespan
-        # results_data = get_makespan_from_raw_log(workload_set)
-        # df = pd.DataFrame(results_data)
-        # plot_grouped_bar(df, workload_set, "Makespan")
+        # 3. Makespan
+        results_data = get_makespan_from_raw_log(workload_set)
+        df = pd.DataFrame(results_data)
+        plot_grouped_bar(df, workload_set, "Makespan")
 
         # 4. finish time fairness
         #   4.1 FTF CDF

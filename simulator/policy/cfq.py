@@ -13,6 +13,8 @@ def predict_step_time(job, num_replicas):
         placement = (*placement, min(num_replicas - sum(placement), 4))
     local_bsz = math.ceil(job.target_batch_size / num_replicas - 1e-8)  # gpu扩张会导致local_bsz减少而保持target_bsz不变
     accum_steps = math.ceil(local_bsz / job.application.max_local_bsz - 1e-8) - 1  # accum_steps表示额外的累积步数
+    if num_replicas == 1 and job.target_batch_size > job.application.init_batch_size:
+        accum_steps = max(1, accum_steps)
     atomic_bsz = math.ceil(local_bsz / (accum_steps + 1) - 1e-8)
     count = num_replicas * (accum_steps + 1)
     atomic_bsz = min(atomic_bsz, int(job.application.max_batch_size / count))
@@ -38,18 +40,19 @@ class CFQPolicy(object):
         # print(f">>> nodes: {nodes}")
         # print(f">>> prev_allocations: {prev_allocations}")
 
-        # 1. 先step更新理想公平参考系统
-        self.gps_sys.do_forward(self._time_fn())  # 理想公平调度器执行到当前时间，更新理想公平分配的各任务进度 todo 实时profile
-
-        # 2. 检查是否有新到达或者结束的任务，如果没有则直接返回
-        has_new_job = self.gps_sys.update_job_state(jobs)
+        # 1. 检查是否有新到达或者结束的任务，如果没有则直接返回
+        has_new_job = self.gps_sys.check_and_add_new_job(jobs)
         has_finished_job = (collections.Counter(sum(self.allocations.values(), []))
                             != collections.Counter(sum(prev_allocations.values(), [])))
+
+        # 2. 更新理想公平参考系统
+        self.gps_sys.do_forward(self._time_fn(), has_new_job)  # 理想公平调度器执行到当前时间，更新理想公平分配的各任务进度
+
         if not has_new_job and not has_finished_job:
             # print(f">>> no new job or finished job, return prev_allocations: {prev_allocations}")
             return prev_allocations, len(nodes)  # todo 如果吞吐量、完成时间变化，也需要调度
 
-        # 3. 如果有结束任务，则按所有任务的完成时间升序再分配资源，但要根据非线性伸缩系数进行控制
+        # 3. 按所有任务的完成时间升序再分配资源，但要根据非线性伸缩系数进行控制
         num_gpus = sum(node.resources["nvidia.com/gpu"] for node in nodes.values())
         num_replicas = {}
         for key in self.gps_sys.finished_job_order:
@@ -83,18 +86,7 @@ class CFQPolicy(object):
             num_gpus -= delta
         print(f">>> num_replicas: {num_replicas}")
 
-        # num_gpus = sum(node.resources["nvidia.com/gpu"] for node in nodes.values())
-        # print(f">>> num_gpus: {num_gpus}")
-        # num_replicas = {}
-        # for key in self.gps_sys.finished_job_order:
-        #     if key not in jobs.keys():
-        #         continue
-        #     job = jobs[key]
-        #     num_replicas[key] = min(num_gpus, math.ceil(job.target_batch_size / job.application.max_local_bsz))
-        #     num_gpus -= num_replicas[key]
-        # print(f">>> num_replicas: {num_replicas}")
-
-        # Placements.  todo 有公平分配结束但现实还存在的任务
+        # Placements.
         allocations = {k: v for k, v in prev_allocations.items() if len(v) == num_replicas.get(k, 0)}
         job_keys = sorted(jobs, key=lambda k: num_replicas.get(k, 0))
         total_gpus = {idx: int(node.resources['nvidia.com/gpu']) for idx, node in nodes.items()}
@@ -118,19 +110,11 @@ class CFQPolicy(object):
 
 class GPSSystem:
     def __init__(self, cur_time, total_gpus):
-        self.fair_jobs: dict = {
-            # key: {
-            #     "arrival_time": self.time,
-            #     "remaining_iter": completion_iter,
-            #     "completion_time": None,
-            #     "step_time": step_time,
-            #     "max_replicas": max_replicas,
-            #     "scale_factor": scale_factor,
-            # }
-        }
+        self.fair_jobs: dict = {}
         self.time = cur_time
         self.finished_job_order = []
         self.total_gpus = total_gpus
+        self.has_finished_job = False
 
     def export_fair_state(self):
         """
@@ -143,7 +127,7 @@ class GPSSystem:
         print(f"[GPSSystem]Average JCT:{sum(jct_dict.values()) / len(jct_dict) if jct_dict else 0}")
         return
 
-    def get_step_time_with_fair_share(self, fair_job, fair_share):
+    def _get_step_time_with_fair_share(self, fair_job, fair_share):
         """
         assume jobs can receive divisible number of gpus, and each job receives N / M gpus
         """
@@ -162,6 +146,10 @@ class GPSSystem:
         completion_progress = job.application.get_progress(job.application.max_epochs)
         scale = job.target_batch_size / job.application.init_batch_size
         completion_iter = completion_progress / scale
+        # print(f"{key}'s completion_iter: {completion_iter}")
+        # completion_epoch = job.application.get_completion_epoch(job.target_batch_size)
+        # completion_iter = job.application.get_iteration(job.target_batch_size, completion_epoch)
+        # print(f"{key}'s completion_iter: {completion_iter}")
 
         # get throughput model
         max_replicas = min(job.max_replicas, math.ceil(job.target_batch_size / job.application.max_local_bsz))
@@ -187,27 +175,24 @@ class GPSSystem:
             "scale_factor": scale_factor,
         }
 
-    def _get_interval_to_next_finished_job(self, fair_jobs):
-        pass
-
-    def do_forward(self, cur_time):
+    def do_forward(self, cur_time, has_new_job):
+        self.time += 30 if has_new_job or self.has_finished_job else 0
+        self.has_finished_job = False
         run_time = cur_time - self.time
-        self.time = cur_time
-        # 计算每个任务的剩余时间
         active_jobs = {k: j for k, j in self.fair_jobs.items() if j["remaining_iter"] > 0}
         if len(active_jobs) == 0:
             return
-        while run_time > 0:
-            fair_share = self.total_gpus / len(active_jobs)
 
-            inter_time = run_time
-
-            for key, job in active_jobs.items():
-                step_time = self.get_step_time_with_fair_share(job, fair_share)
-                finished_iter = inter_time / step_time
-                job["remaining_iter"] = max(job["remaining_iter"] - finished_iter, 0)
-
-            run_time -= inter_time
+        fair_share = self.total_gpus / len(active_jobs)
+        for key, job in active_jobs.items():
+            step_time = self._get_step_time_with_fair_share(job, fair_share)
+            finished_iter = run_time / step_time
+            virtual_finish_time = job["remaining_iter"] * step_time
+            job["remaining_iter"] = max(job["remaining_iter"] - finished_iter, 0)
+            if job["remaining_iter"] == 0:
+                self.fair_jobs[key]["completion_time"] = self.time + virtual_finish_time
+                self.has_finished_job = True
+        self.time += run_time
 
     def _sim_forward(self):
         active_jobs = {k: copy.deepcopy(j) for k, j in self.fair_jobs.items() if j["remaining_iter"] > 0}
@@ -218,29 +203,31 @@ class GPSSystem:
             fair_share = self.total_gpus / len(active_jobs)
             virtual_skip_time = 1 << 32
             for key, job in active_jobs.items():
-                step_time = self.get_step_time_with_fair_share(job, fair_share)
-                job["v_step_time"] = step_time
-                job["v_finish_time"] = job["remaining_iter"] * job["v_step_time"]
-                virtual_skip_time = min(virtual_skip_time, job["v_finish_time"])
+                step_time = self._get_step_time_with_fair_share(job, fair_share)
+                v_finish_time = job["remaining_iter"] * step_time
+                virtual_skip_time = min(virtual_skip_time, v_finish_time) + 30
 
-            virtual_time = virtual_time + virtual_skip_time
+            virtual_skip_time = (virtual_skip_time // 60 + 1) * 60
             # print(f">>> virtual_time: {virtual_time}, virtual_skip_time: {virtual_skip_time}")
             to_del_key = []
             for key, job in active_jobs.items():
-                finished_iter = virtual_skip_time / job["v_step_time"]  #
+                step_time = self._get_step_time_with_fair_share(job, fair_share)
+                finished_iter = (virtual_skip_time - 30) / step_time
+                v_finish_time = job["remaining_iter"] * step_time
                 job["remaining_iter"] = max(job["remaining_iter"] - finished_iter, 0)
 
                 if job["remaining_iter"] == 0:
-                    self.fair_jobs[key]["completion_time"] = virtual_time
+                    self.fair_jobs[key]["completion_time"] = virtual_time + v_finish_time
                     # print(f"append {key} to finished_job_order")
                     self.finished_job_order.append(key)
                     to_del_key.append(key)
+            virtual_time = virtual_time + virtual_skip_time
             for key in to_del_key:
                 del active_jobs[key]
 
         print(f">>> finished_job_order: {self.finished_job_order}")
 
-    def update_job_state(self, jobs):
+    def check_and_add_new_job(self, jobs):
         # 检查并新增任务
         has_new_job = False
         for key, job in jobs.items():

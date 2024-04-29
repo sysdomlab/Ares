@@ -13,14 +13,14 @@ workloads = [
     for j in [1, 2, 3, 4, 5, 6, 7, 8]
 ]
 policies = [
-    # 'pollux',
-    # 'optimus',
-    # 'tiresias',
-    # 'sjf',
-    # 'fifo',
+    'pollux',
+    'optimus',
+    'tiresias',
+    'sjf',
+    'fifo',
     'cfq',
 ]
-exp_name = "0.75_RowBsz"
+exp_name = "0.75_MaxBsz"
 
 python3 = "/home/yfliu/lib/miniconda3/envs/pollux/bin/python3"
 
@@ -48,6 +48,6 @@ def execute_command(command):
 
 
 if __name__ == '__main__':
-    pool_size = os.cpu_count()
+    pool_size = os.cpu_count() // 2
     with Pool(pool_size) as pool:
         list(tqdm(pool.imap_unordered(execute_command, commands), total=len(commands)))

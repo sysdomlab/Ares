@@ -22,7 +22,7 @@ def memoize(f):
 
 def retry(func):
     def wrapper(self, placement, local_bsz):
-        try_list = [1, 2, 1 / 2, 4, 1 / 4, 8, 1 / 8, 16, 1 / 16, 32, 1 / 32, 64, 1 / 64]
+        try_list = [1, 2, 1 / 2, 4, 1 / 4, 6, 1 / 6, 8, 1 / 8, 16, 1 / 16, 12, 1 / 12, 32, 1 / 32, 64, 1 / 64]
         has_err = False
         for i, scale in enumerate(try_list):
             try:
@@ -34,7 +34,8 @@ def retry(func):
             except Exception as err:
                 has_err = True
                 if i == len(try_list) - 1:
-                    raise err
+                    print(f"Retry failed with placement {placement}, local_bsz {local_bsz}")
+                    raise Exception(f"Retry failed with placement {placement}, local_bsz {local_bsz}")
     return wrapper
 
 
