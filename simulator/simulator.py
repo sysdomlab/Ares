@@ -262,6 +262,7 @@ class Cluster(object):
         self.logs.append({
             "timestamp": self.current_time,
             "num_nodes": self.num_nodes,
+            "allocations": self.allocations,
             "submitted_jobs": [
                 {
                     "name": job.name,
@@ -375,9 +376,11 @@ def simulate(args):
         print("Active jobs:")
         for val in simulator.logs[-1]["submitted_jobs"]:
             if val["submission_time"] <= simulator.current_time and val["completion_time"] is None:
-                print("    {}:\t[epoch {}]\t[restarts {}]\t[batch size {}]\t[placement {}]".format(
-                    val["name"], val["epoch"], val["num_restarts"], val["batch_size"], val["placement"]))
+                print(f"    {val['name']}:\t[epoch {val['epoch']}]\t[restarts {val['num_restarts']}]\t"
+                      f"[batch size {val['batch_size']}]\t[placement {val['placement']}]")
+        print(f"allocations: {simulator.logs[-1]['allocations']}")
         used_gpus = sum(map(len, simulator.allocations.values()))
+        print("Active jobs:")
         print("GPU utilization: {}".format(used_gpus))
         jct_dict = simulator.get_jcts()
         print(f"Completed jobs [{len(jct_dict)}]:")

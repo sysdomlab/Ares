@@ -48,6 +48,6 @@ def execute_command(command):
 
 
 if __name__ == '__main__':
-    pool_size = os.cpu_count() // 2
+    pool_size = os.cpu_count()
     with Pool(pool_size) as pool:
         list(tqdm(pool.imap_unordered(execute_command, commands), total=len(commands)))

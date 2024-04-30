@@ -1,12 +1,16 @@
+import collections
 import os
 import subprocess
-from time import sleep
+import re
 
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
 from collections import defaultdict
+from time import sleep
+
+from matplotlib.patches import Patch
 
 
 # 遍历日志文件
@@ -126,7 +130,9 @@ def plot_grouped_bar(src, wl_set, metric):
     plt.legend(title='Algorithm', bbox_to_anchor=(1, 1))
     plt.tight_layout()  # Adjust layout to prevent clipping of labels
     plt.savefig(f"{wl_set}/{metric}.jpg")
-    plt.show()
+    # plt.show()
+    plt.clf()
+    print(f"finish plot {wl_set}/{metric}.jpg")
 
 
 def get_all_jct_from_raw_log(wl_set):
@@ -185,10 +191,10 @@ def plot_cdf(data, wl_set):
     # Set the style of the plot
     for workload, v in data.items():
         plt.style.use('ggplot')
-        print(wl_set)
+        # print(wl_set)
         for algorithm, job in v.items():
-            print(f"workload-{workload}, {algorithm}: \t"
-                  f"avg {sum(job.values()) / len(job):.2f}, max {max(job.values()):.2f}, min {min(job.values()):.2f}")
+            # print(f"workload-{workload}, {algorithm}: \t"
+            #       f"avg {sum(job.values()) / len(job):.2f}, max {max(job.values()):.2f}, min {min(job.values()):.2f}")
             sorted_ftf_values = np.sort(list(job.values()))
             yvals = np.arange(len(sorted_ftf_values)) / float(len(sorted_ftf_values))
             plt.plot(sorted_ftf_values, yvals, label=algorithm)
@@ -200,9 +206,10 @@ def plot_cdf(data, wl_set):
         plt.grid(True)
         plt.xscale('log')
         plt.tight_layout()  # Adjust layout to prevent clipping of labels
-        plt.show()
-        plt.savefig(f"{wl_set}/workload-{workload}.jpg")
-        sleep(0.5)
+        plt.savefig(f"{wl_set}/ftf_cdf_workload-{workload}.jpg")
+        # plt.show()
+        plt.clf()
+        print(f"finish plot {wl_set}/ftf_cdf_workload-{workload}.jpg")
 
 
 def plot_grouped_bar_with_error_bars(src, wl_set, metric):
@@ -234,7 +241,102 @@ def plot_grouped_bar_with_error_bars(src, wl_set, metric):
     plt.yscale('log')
     plt.tight_layout()  # Adjust layout to prevent clipping of labels
     plt.savefig(f"{wl_set}/{metric}.jpg")
-    plt.show()
+    # plt.show()
+    plt.clf()
+    print(f"finish plot {wl_set}/{metric}.jpg")
+
+
+def get_scheduling_from_raw_log(wl_set):
+    results_data = collections.defaultdict(dict)
+    for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
+        workload = file.split("/")[-2].split("-")[-1]
+        algo = file.split("/")[-1].split(".")[0]
+        # print(workload, file)
+
+        with open(file, 'r') as f:
+            log_data = f.read()
+            matches = re.findall(pattern=r'allocations:\s\{(.+?)\}', string=log_data, flags=re.MULTILINE)
+
+        task_flag = {
+            "cifar10": 1,
+            "ncf": 1,
+            "deepspeech2": 2,
+            "bert": 2,
+            "yolov3": 3,
+            "imagenet": 4,
+        }
+        num_machines, num_gpus_per_machine = 16, 4
+        data = np.zeros((len(matches), num_machines, num_gpus_per_machine), dtype=int)
+        for i, match in enumerate(matches):
+            match = eval("{" + match + "}")
+            # print(match)
+            available_gpus = {i: 0 for i in range(16)}
+            # print(available_gpus)
+            for task, gpu_config in match.items():
+                for gpu_id in gpu_config:
+                    machine_id = int(gpu_id)
+                    gpu_index = available_gpus[machine_id]
+                    available_gpus[machine_id] += 1
+                    # print(machine_id, gpu_index)
+                    # print(match)
+                    data[i, machine_id, gpu_index] = task_flag[task[1].split("-")[0]]
+
+        results_data[workload][algo] = data
+    return results_data
+
+
+def plot_scheduling(res_data, wl_set, wl_set_filter=None, wl_filter=None, algo_filter=None):
+    if wl_set_filter is not None and wl_set not in wl_set_filter:
+        return
+
+    num_machines, num_gpus_per_machine = 16, 4
+
+    plt.style.use('ggplot')
+    for workload, algo_data in res_data.items():
+        if wl_filter is not None and workload not in wl_filter:
+            continue
+        for algo, scheduling_data in algo_data.items():
+            if algo_filter is not None and algo not in algo_filter:
+                continue
+            colors = ['#ffffff', '#a1daea', '#007db8', '#ffaa5b', '#e60018']
+            task_labels = ['Free', 'Small', 'Medium', 'Large', '(X)Large']
+            time_steps = len(scheduling_data)  # (time_steps, num_machines, num_gpus_per_machine)
+
+            # 创建图形和坐标轴
+            plt.figure(figsize=(32, 9))
+            ax = plt.gca()
+
+            # 绘制任务资源占用分布图
+            for gpu_id in range(num_machines * num_gpus_per_machine):
+                machine_id = gpu_id // num_gpus_per_machine
+                gpu_index = gpu_id % num_gpus_per_machine
+                for time_step in range(time_steps):
+                    task_type = scheduling_data[time_step, machine_id, gpu_index]
+                    color = colors[task_type]
+                    ax.add_patch(plt.Rectangle((time_step, gpu_id), 1, 1, color=color, alpha=0.7))
+
+            # 设置坐标轴标签和标题
+            plt.xlabel('Round', fontsize=24)
+            plt.ylabel('GPU ID', fontsize=24)
+            plt.xticks(fontsize=24)
+            plt.yticks(fontsize=24)
+            plt.title(f"Scheduling Decision for {algo} on {wl_set}/workload-{workload}", fontsize=24)
+
+            # 显示颜色标注
+            legend_patches = [Patch(color=color, label=label) for color, label in zip(colors[1:], task_labels[1:])]
+            ax.legend(handles=legend_patches, loc='upper left', bbox_to_anchor=(1, 1), fontsize=24)
+
+            # 设置坐标轴范围
+            plt.xlim(0, time_steps)
+            plt.ylim(0, num_machines * num_gpus_per_machine)
+
+            # 显示图形
+            plt.tight_layout()
+            plt.savefig(f"{wl_set}/visualized_schedules_{workload}-{algo}.jpg")
+            # plt.show()
+            plt.clf()
+            plt.close()
+            print(f"finish plot {wl_set}/visualized_schedules_{workload}-{algo}.jpg")
 
 
 if __name__ == '__main__':
@@ -284,5 +386,24 @@ if __name__ == '__main__':
                     })
         df = pd.DataFrame(results_data)
         plot_grouped_bar_with_error_bars(df, workload_set, "FTF")
+
+        # 5. visualize scheduling decision
+        results_data = get_scheduling_from_raw_log(workload_set)
+        plot_scheduling(results_data, workload_set,
+                        wl_set_filter=[
+                            "workloads-0.5",
+                            "workloads-1.0",
+                            "workloads-1.5",
+                            "workloads-2.0",
+                            "workloads-realistic",
+                        ],
+                        wl_filter=["1"],
+                        algo_filter=[
+                            "cfq",
+                            "optimus",
+                            "pollux",
+                            "tiresias",
+                            "sjf"
+                        ])
 
         pass
