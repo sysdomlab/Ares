@@ -205,8 +205,9 @@ class GPSSystem:
             for key, job in active_jobs.items():
                 step_time = self._get_step_time_with_fair_share(job, fair_share)
                 v_finish_time = job["remaining_iter"] * step_time
-                virtual_skip_time = min(virtual_skip_time, v_finish_time) + 30
+                virtual_skip_time = min(virtual_skip_time, v_finish_time)
 
+            virtual_skip_time += 30
             virtual_skip_time = (virtual_skip_time // 60 + 1) * 60
             # print(f">>> virtual_time: {virtual_time}, virtual_skip_time: {virtual_skip_time}")
             to_del_key = []
