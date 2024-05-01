@@ -316,15 +316,16 @@ def plot_scheduling(res_data, wl_set, wl_set_filter=None, wl_filter=None, algo_f
                     ax.add_patch(plt.Rectangle((time_step, gpu_id), 1, 1, color=color, alpha=0.7))
 
             # 设置坐标轴标签和标题
-            plt.xlabel('Round', fontsize=24)
-            plt.ylabel('GPU ID', fontsize=24)
-            plt.xticks(fontsize=24)
-            plt.yticks(fontsize=24)
-            plt.title(f"Scheduling Decision for {algo} on {wl_set}/workload-{workload}", fontsize=24)
+            fontsize = 50
+            plt.xlabel('Round', fontsize=fontsize)
+            plt.ylabel('GPU ID', fontsize=fontsize)
+            plt.xticks(fontsize=fontsize)
+            plt.yticks(fontsize=fontsize)
+            plt.title(f"Scheduling Decision for {algo} on {wl_set}/workload-{workload}", fontsize=fontsize)
 
             # 显示颜色标注
             legend_patches = [Patch(color=color, label=label) for color, label in zip(colors[1:], task_labels[1:])]
-            ax.legend(handles=legend_patches, loc='upper left', bbox_to_anchor=(1, 1), fontsize=24)
+            ax.legend(handles=legend_patches, loc='upper left', bbox_to_anchor=(1, 1), fontsize=fontsize)
 
             # 设置坐标轴范围
             plt.xlim(0, time_steps)
@@ -339,10 +340,7 @@ def plot_scheduling(res_data, wl_set, wl_set_filter=None, wl_filter=None, algo_f
             print(f"finish plot {wl_set}/visualized_schedules_{workload}-{algo}.jpg")
 
 
-if __name__ == '__main__':
-    # 切换到日志目录
-    os.chdir(f"../simulator/simulator_logs/0.75_RowBsz")
-
+def main():
     workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
     for workload_set in workload_sets:
         # 1. avg jct
@@ -407,3 +405,10 @@ if __name__ == '__main__':
                         ])
 
         pass
+
+
+if __name__ == '__main__':
+    os.chdir(f"/home/yfliu/cluster_schedule/Pollux/simulator/simulator_logs/0.75_MaxBsz")
+    main()
+    # os.chdir(f"/home/yfliu/cluster_schedule/Pollux/simulator/simulator_logs/0.75_RowBsz")
+    # main()
