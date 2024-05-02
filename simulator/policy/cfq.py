@@ -75,7 +75,7 @@ class CFQPolicy(object):
             for i, (x, y, _) in enumerate(self.gps_sys.fair_jobs[key]["scale_factor"]):
                 if x < desire_replicas:
                     continue
-                if y > 0.5:
+                if y > 1 / i:
                     desire_replicas = x
                 else:
                     break
