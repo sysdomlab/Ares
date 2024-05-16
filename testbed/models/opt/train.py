@@ -11,6 +11,8 @@ import torch
 from tqdm import tqdm
 from datasets import load_metric
 
+# https://beyondguo.github.io/nlp_basis/notes/HuggingfaceNLP-8.%20%E4%BD%BF%E7%94%A8PyTorch%E6%9D%A5%E5%BE%AE%E8%B0%83.html#_1-%E6%95%B0%E6%8D%AE%E9%9B%86%E9%A2%84%E5%A4%84%E7%90%86
+
 raw_datasets = load_dataset("glue", "mrpc")
 checkpoint = "/home/cchen/yfliu/ares/data/squad/model/bert-base-uncased"
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)

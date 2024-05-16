@@ -114,6 +114,7 @@ def main(args):
                 save_job_state(epoch, i + 1, len(trainer.train_loader), args.job_name)  # save Ares job state
                 if get_signal_received():  # graceful exit
                     trainer.save_checkpoint(epoch)  # save application-specific checkpoint
+                    dist.barrier()
                     exit(143)
 
             timer_2 = time.time()
@@ -142,7 +143,6 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--job_name', type=str, default='cifar10-0')
-    parser.add_argument('--job_id', type=str, default='0')
     parser.add_argument('--master_address', type=str, default='10.0.0.19')
     parser.add_argument('--master_port', type=str, default='17001')
     parser.add_argument('--world_size', type=int, default=1)
@@ -154,10 +154,9 @@ if __name__ == '__main__':
     parser.add_argument('--backend', type=str, default="nccl")
 
     parser.add_argument('--model_name', type=str, default='cifar10')
-    parser.add_argument('--global_bsz', type=int, default=2048)
     parser.add_argument('--max_epoch', type=int, default=10)
 
-    parser.add_argument('--print_freq', type=int, default=1)
+    parser.add_argument('--print_freq', type=int, default=10)
 
     start = time.time()
     main(parser.parse_args())

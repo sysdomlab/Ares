@@ -1,3 +1,7 @@
+def get_python3_path():
+    return "/home/cchen/miniconda3/envs/yfliu/bin/python3"
+
+
 def get_dataset_path(model_name):
     if model_name == 'cifar10':
         return "/home/cchen/yfliu/ares/data/cifar10"
