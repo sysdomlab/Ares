@@ -20,7 +20,7 @@ def get_dataset_path(model_name):
 
 
 def get_job_state_path(job_name):
-    return f'/home/cchen/yfliu/ares/checkpoints/{job_name}/job_state.pth'
+    return f'/home/cchen/yfliu/ares/checkpoints/{job_name}/job_state.json'
 
 
 def get_checkpoint_path(job_name, return_dir=False):

@@ -6,7 +6,7 @@ import zerorpc
 import subprocess
 
 
-class WorkerRPCServer(object):
+class Worker(object):
     """
     RPC server for worker.
 
@@ -38,15 +38,15 @@ class WorkerRPCServer(object):
 
         if proc_name in self.registered_processes:
             raise ValueError(f"Proc {proc_name} is already running.")
+        cmd = cmd if isinstance(cmd, list) else cmd.split()
         gpu_id = str(gpu_id)
         if gpu_id not in self.gpu_alloc:
             raise ValueError(f"GPU {gpu_id} is not available.")
-        cmd = cmd if isinstance(cmd, list) else cmd.split()
-
-        print(f"Running proc {proc_name} on GPU {gpu_id}")
         out_dir = os.path.dirname(out_file)
         if not os.path.exists(out_dir):
             os.makedirs(out_dir, exist_ok=True)
+
+        print(f"Running proc {proc_name} on GPU {gpu_id}")
         with open(out_file, "w") as f:
             proc = subprocess.Popen(cmd,
                                     env={"CUDA_VISIBLE_DEVICES": gpu_id},
@@ -60,6 +60,7 @@ class WorkerRPCServer(object):
             "out_file": out_file
         }
         self.gpu_alloc[gpu_id].append(proc_name)
+
         return True, f"Running proc {proc_name} on GPU {gpu_id}"
 
     def kill_proc(self, proc_name):
@@ -72,7 +73,7 @@ class WorkerRPCServer(object):
             return 0, f"process don't exist"
         proc = self.registered_processes[proc_name]
 
-        if proc["proc"].returncode is not None:
+        if proc["proc"].poll() is not None:
             print(f"Proc {proc_name} on GPU {proc['gpu_id']} has already finished.")
             del self.registered_processes[proc_name]
             self.gpu_alloc[proc["gpu_id"]].remove(proc_name)
@@ -80,11 +81,11 @@ class WorkerRPCServer(object):
             return 0, f"Proc {proc_name} on GPU {proc['gpu_id']} has already finished."
 
         print(f"Killing proc {proc_name} on GPU {proc['gpu_id']}")
-        if proc["proc"].returncode is None:
+        if proc["proc"].poll() is None:
             proc["proc"].terminate()
             # proc["proc"].wait()
 
-        return proc["proc"].returncode, f"Killed proc {proc_name} on GPU {proc['gpu_id']}"
+        return proc["proc"].poll(), f"Killed proc {proc_name} on GPU {proc['gpu_id']}"
 
     def kill_job(self, job_name):
         """
@@ -96,13 +97,14 @@ class WorkerRPCServer(object):
         for proc_name in procs_to_kill:
             self.kill_proc(proc_name)
 
-    def proc_stats(self, proc_name):
+    def stats_proc(self, proc_name):
         """
         Get the status of a process on this machine.
 
         :param proc_name: format as f"{job_name}:{rank}"
         :return: a dictionary containing the status of the process.
         """
+        print(f"stats_proc {proc_name}")
         if proc_name in self.registered_processes:
             proc = self.registered_processes[proc_name]
             res = {
@@ -111,14 +113,15 @@ class WorkerRPCServer(object):
                 "gpu_id": proc["gpu_id"],
                 "out_file": proc["out_file"],
                 "pid": proc["proc"].pid,
-                "returncode": proc["proc"].returncode,
+                "returncode": proc["proc"].poll(),
                 "worker": self.ip_address
             }
             if proc["proc"].poll() is not None:
-                print(f"Proc {proc_name} on GPU {proc['gpu_id']} has already finished.")
+                print(f"Proc {proc_name} on GPU {proc['gpu_id']} finished.")
                 del self.registered_processes[proc_name]
                 self.gpu_alloc[proc["gpu_id"]].remove(proc_name)
             return res
+        print(f"Proc {proc_name} not found.")
         return None
 
     def job_stats(self, job_name):
@@ -129,7 +132,7 @@ class WorkerRPCServer(object):
         :return: a list of dictionaries containing the status of all processes of the job.
         """
         procs_to_stats = [k for k in self.registered_processes.keys() if k.startswith(job_name)]
-        return [self.proc_stats(proc_name) for proc_name in procs_to_stats]
+        return [self.stats_proc(proc_name) for proc_name in procs_to_stats]
 
     def get_gpu_alloc(self):
         """
@@ -141,16 +144,16 @@ class WorkerRPCServer(object):
 
 
 if __name__ == '__main__':
-    # python3 worker.py --local_ip 10.0.0.19 --manager_ip 10.0.0.19
-    # python3 worker.py --local_ip 10.0.0.20 --manager_ip 10.0.0.19
+    # python3 worker.py --local_ip 10.0.0.19
+    # python3 worker.py --local_ip 10.0.0.20
+    # nohup python3 worker.py --local_ip 10.0.0.20 > ./worker.log 2>&1 &
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu_num', type=int, default=4)
     parser.add_argument('--local_ip', type=str)
     parser.add_argument('--local_port', type=str, default="4242")
-    parser.add_argument('--manager_ip', type=str)
     args = parser.parse_args()
 
     print(f"start the RPC server on {args.local_ip}:{args.local_port}")
-    s = zerorpc.Server(WorkerRPCServer(gpu_num=args.gpu_num, ip_address=args.local_ip))
+    s = zerorpc.Server(Worker(gpu_num=args.gpu_num, ip_address=args.local_ip))
     s.bind(f"tcp://0.0.0.0:{args.local_port}")
     s.run()

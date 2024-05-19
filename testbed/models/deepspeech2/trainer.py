@@ -97,8 +97,10 @@ class Deepspeech2Trainer(Trainer):
         self.val_loader = val_loader
 
         # metrics  Word Error Rate, Character Error Rate
-        self.train_metric = Statistics(["loss", "wer", "cer"], device=self.args.device)
-        self.val_metric = Statistics(["loss", "wer", "cer"], device=self.args.device)
+        self.train_metric = Statistics(["loss", "wer", "cer"], device=self.args.device,
+                                       acc_steps=self.args.acc_step)
+        self.val_metric = Statistics(["loss", "wer", "cer"], device=self.args.device,
+                                     acc_steps=self.args.acc_step)
 
     def validate(self, out, targets, output_sizes, target_sizes):
         # unflatten targets

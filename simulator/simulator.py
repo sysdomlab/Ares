@@ -2,7 +2,6 @@ import argparse
 import collections
 import json
 import time
-from typing import List
 
 import math
 import numpy as np
@@ -178,24 +177,32 @@ class Job(object):
 class Cluster(object):
     def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60):
         assert 1 <= num_gpus <= 4
-        self.workload = pandas.read_csv(workload_name)
         self.nodes = nodes.split(",")
         self.num_nodes = len(self.nodes)
         self.num_gpus = num_gpus
         self.interval = interval
         self.current_time = 0
-        self.real_time = time.time()  # todo 有用吗
-        self.jobs = [Job(name=row.name,
-                         application=APPLICATIONS[row.application],
-                         submission_time=row.time,
-                         target_num_replicas=None if policy_name in [] else row.num_replicas,
-                         target_batch_size=None if policy_name in [] else APPLICATIONS[row.application].max_batch_size)
-                     # target_batch_size=None if policy_name in [] else row.batch_size)
-                     for row in self.workload.itertuples()]
+        self.start_time = time.time()
+        self.jobs = collections.OrderedDict()
+        for row in pandas.read_csv(workload_name).itertuples():
+            self.jobs[row.name] = Job(
+                name=row.name,
+                application=APPLICATIONS[row.application],
+                submission_time=row.time,
+                target_num_replicas=None if policy_name in [] else row.num_replicas,
+                target_batch_size=None if policy_name in [] else APPLICATIONS[row.application].max_batch_size,
+                # target_batch_size=None if policy_name in [] else row.batch_size,
+            )
         self.policy = self.get_policy(policy_name)
 
-        self.allocations = {}
+        self.running_allocations = {}  # allocation[job_name] = [node_ip]
         self.logs = []
+
+        # used for testbed
+        self.gpu_alloc = {(ip, i): [] for ip in self.nodes for i in range(self.num_gpus)}
+        # gpu_alloc[(node_ip, gpu_id)] = [proc_name]
+        self.proc_alloc = {}
+        # proc_alloc[proc_name] = (node_ip, gpu_id)
 
     def get_policy(self, policy_name):
         assert policy_name in get_all_policies()
@@ -214,44 +221,9 @@ class Cluster(object):
         elif policy_name == "cfq":
             return CFQPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes)
 
-    def step(self):
-        for job in self.jobs:
-            job.step()
-            pass  # todo 要更新每个任务的状态、current_time
-        self.current_time += self.interval
-        job_infos = self.get_job_infos()
-        node_infos = self.get_node_infos()
-        if job_infos:
-            # Optimize allocations.
-            self.allocations = {k: v for k, v in self.allocations.items() if k in job_infos}
-
-            allocations, desired_nodes = self.policy.optimize(job_infos, node_infos, self.allocations)
-
-            used_gpus = collections.Counter(sum(allocations.values(), []))
-            assert all(val <= node_infos[key].resources["nvidia.com/gpu"] for key, val in used_gpus.items())
-
-            # 1. kill jobs that are not in the allocation
-            killed_jobs = [job_name for job_name in self.allocations.keys() if job_name not in allocations.keys()]
-            started_jobs = [job_name for job_name in allocations.keys() if job_name not in self.allocations.keys()]
-            # for job in self.jobs:
-            #     pass  # todo allocate 修改bsz、杀死任务、启动任务
-            # 2. wait for jobs to be killed
-            # 3. allocate jobs according to the new allocation
-            for job in self.jobs:
-                if allocations.get(job.name) != self.allocations.get(job.name):
-                    alloc = allocations.get(job.name, [])
-                    placement = []
-                    for i in range(len(alloc)):
-                        if i == 0 or alloc[i] != alloc[i - 1]:
-                            placement.append(1)
-                        else:
-                            placement[-1] += 1
-                    job.reallocate(placement)
-            self.allocations = allocations
-
     def get_job_infos(self):
         job_infos = {}
-        for job in self.jobs:
+        for job in self.jobs.values():
             # todo 要更新每个任务的状态、current_time
             # todo: 为完成的任务添加 completion_time
             if self.current_time >= job.submission_time and job.completion_time is None:
@@ -319,7 +291,7 @@ class Cluster(object):
         )
 
     def all_complete(self):
-        return all(job.completion_time is not None for job in self.jobs)
+        return all(job.completion_time is not None for job in self.jobs.values())
 
     def output_logs(self, path):
         with open(path, "w") as f:
@@ -334,6 +306,48 @@ class Cluster(object):
             if val["completion_time"] is not None
         }
 
+    def step(self):
+        self.current_time += self.interval
+        for job in self.jobs.values():
+            job.step()
+        job_infos = self.get_job_infos()
+        node_infos = self.get_node_infos()
+        if not job_infos:
+            return
+
+        # Optimize allocations.
+        self.running_allocations = {k: v for k, v in self.running_allocations.items() if k in job_infos}
+
+        new_allocations, desired_nodes = self.policy.optimize(job_infos, node_infos, self.running_allocations)
+
+        used_gpus = collections.Counter(sum(new_allocations.values(), []))
+        assert all(val <= node_infos[key].resources["nvidia.com/gpu"] for key, val in used_gpus.items())
+
+        # 1. kill jobs that are not in the allocation
+        killed_proc = [{"process_name": f"{k[1]}:{i}", "node_ip": node}
+                       for k, v in self.running_allocations.items() if v != new_allocations.get(k, [])
+                       for i, node in enumerate(v)]
+        print(f"killed_proc: {killed_proc}")
+        start_proc = [{"process_name": f"{k[1]}:{i}", "node_ip": node}
+                      for k, v in new_allocations.items() if v != self.running_allocations.get(k, [])
+                      for i, node in enumerate(v)]
+        print(f"start_proc: {start_proc}")
+        # for job in self.jobs.values():
+        #     pass  # todo allocate 修改bsz、杀死任务、启动任务
+        # 2. wait for jobs to be killed
+        # 3. allocate jobs according to the new allocation
+        for job in self.jobs.values():
+            if new_allocations.get(job.name) != self.running_allocations.get(job.name):
+                alloc = new_allocations.get(job.name, [])
+                placement = []
+                for i in range(len(alloc)):
+                    if i == 0 or alloc[i] != alloc[i - 1]:
+                        placement.append(1)
+                    else:
+                        placement[-1] += 1
+                job.reallocate(placement)
+        self.running_allocations = new_allocations
+
     def run(self):
         while not self.all_complete():
             self.step()
@@ -345,14 +359,14 @@ class Cluster(object):
         self.logs.append({
             "timestamp": self.current_time,
             "num_nodes": self.num_nodes,
-            "allocations": self.allocations,
+            "allocations": self.running_allocations,
             "submitted_jobs": [
                 {
                     "name": job.name,
                     "epoch": job.epoch,
                     "progress": job.progress,
                     "num_restarts": job.num_restarts,
-                    "allocation": self.allocations.get(job.name, []),
+                    "allocation": self.running_allocations.get(job.name, []),
                     "placement": job.placement,
                     "batch_size": job.atomic_bsz * (job.accum_steps + 1) * sum(job.placement),
                     "accum_steps": job.accum_steps,
@@ -360,7 +374,7 @@ class Cluster(object):
                     "completion_time": job.completion_time,
                     "grad_params": job.grad_params,
                 }
-                for job in self.jobs if job.submission_time <= self.current_time
+                for job in self.jobs.values() if job.submission_time <= self.current_time
             ],
         })
         print(f"---------------- SIMULATOR TIME: {self.current_time} ----------------")
@@ -370,7 +384,7 @@ class Cluster(object):
                 print(f"    {val['name']}:\t[epoch {val['epoch']}]\t[restarts {val['num_restarts']}]\t"
                       f"[batch size {val['batch_size']}]\t[placement {val['placement']}]")
         print(f"allocations: {self.logs[-1]['allocations']}")
-        used_gpus = sum(map(len, self.allocations.values()))
+        used_gpus = sum(map(len, self.running_allocations.values()))
         print("Active jobs:")
         print("GPU utilization: {}".format(used_gpus))
         jct_dict = self.get_jcts()
@@ -383,9 +397,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, help="path to workload csv",
                         default="./workload/workloads-1.0/workload-1.csv")
-                        # default="./workload/workloads-1.0/workload-debug.csv")
+    # default="./workload/workloads-1.0/workload-debug.csv")
     parser.add_argument("--policy", type=str, default="cfq",
-                        choices=get_all_policies())
+                        choices=get_all_policies())  # 1289.1875
     # parser.add_argument("--nodes", type=str, default=",".join([f"10.0.0.{i}" for i in range(19, 19 + 16)]),
     #                     help="min number of nodes in the cluster")
     parser.add_argument("--nodes", type=str, default=",".join([f"{i}" for i in range(0, 16)]),

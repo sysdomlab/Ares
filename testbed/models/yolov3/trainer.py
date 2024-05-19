@@ -1,5 +1,6 @@
 import os
 import sys
+
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # print(os.path.dirname(os.path.abspath(__file__)))
 
@@ -41,7 +42,7 @@ class YOLOv3Trainer(Trainer):
         self.optimizer = SGD(self.model.parameters(), lr=cfg.TRAIN["LR_INIT"],
                              momentum=cfg.TRAIN["MOMENTUM"], weight_decay=cfg.TRAIN["WEIGHT_DECAY"])
         self.scheduler = CosineAnnealingLR(self.optimizer,
-                                           T_max=(self.args.max_epoch - cfg.TRAIN["WARMUP_EPOCHS"]),
+                                           T_max=self.args.max_epoch,
                                            eta_min=cfg.TRAIN["LR_END"])
 
         # recover from checkpoint
@@ -65,8 +66,10 @@ class YOLOv3Trainer(Trainer):
         self.val_loader = val_loader
 
         # metrics
-        self.train_metric = Statistics(["loss", "loss_giou", "loss_conf", "loss_cls"], device=self.args.device)
-        self.val_metric = Statistics(["loss", "loss_giou", "loss_conf", "loss_cls"], device=self.args.device)
+        self.train_metric = Statistics(["loss", "loss_giou", "loss_conf", "loss_cls"], device=self.args.device,
+                                       acc_steps=self.args.acc_step)
+        self.val_metric = Statistics(["loss", "loss_giou", "loss_conf", "loss_cls"], device=self.args.device,
+                                     acc_steps=self.args.acc_step)
 
     def train_acc_step(self, i, batch):
         imgs, label_sbbox, label_mbbox, label_lbbox, sbboxes, mbboxes, lbboxes = (i.to(self.args.device) for i in batch)

@@ -39,18 +39,24 @@ def get_signal_received():
 
 
 class Statistics:
-    def __init__(self, metrics: List[str], device):
+    def __init__(self, metrics: List[str], device, acc_steps):
         self.device = device
         self.iteration = 0
         self.metric_names = metrics
         self.metric_values = torch.tensor([0] * len(metrics), dtype=torch.float64, device=device)
         self.metric_batch = torch.tensor([0] * len(metrics), dtype=torch.float64, device=device)
+        self.acc_num = 0
+        self.acc_steps = acc_steps
         self.metric_current = None
 
     def accumulate_in_batch(self, values: List[float]):
         self.metric_batch += torch.tensor(values, dtype=torch.float64, device=self.device)
+        self.acc_num += 1
 
     def update_local(self):
+        if self.acc_num < self.acc_steps:
+            self.metric_batch = self.metric_batch / self.acc_num * self.acc_steps
+        self.acc_num = 0
         self.metric_values = (self.metric_values * self.iteration + self.metric_batch) / (self.iteration + 1)
         self.metric_current = self.metric_batch.clone()
         self.metric_batch.zero_()

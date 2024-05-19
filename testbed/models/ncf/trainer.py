@@ -65,8 +65,10 @@ class NCFTrainer(Trainer):
         self.val_loader = val_loader
 
         # metrics
-        self.train_metric = Statistics(["loss", "HR", "NDCG"], device=self.args.device)
-        self.val_metric = Statistics(["loss", "HR", "NDCG"], device=self.args.device)
+        self.train_metric = Statistics(["loss", "HR", "NDCG"], device=self.args.device,
+                                       acc_steps=self.args.acc_step)
+        self.val_metric = Statistics(["loss", "HR", "NDCG"], device=self.args.device,
+                                     acc_steps=self.args.acc_step)
 
     def train_acc_step(self, i, batch):
         user, item, label = [item.to(self.args.device) for item in batch]

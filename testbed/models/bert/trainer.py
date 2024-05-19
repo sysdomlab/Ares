@@ -106,8 +106,10 @@ class BertTrainer(Trainer):
         self.features = features
 
         # metrics
-        self.train_metric = Statistics(["loss"], device=self.args.device)
-        self.val_metric = Statistics(["f1"], device=self.args.device)
+        self.train_metric = Statistics(["loss"], device=self.args.device,
+                                       acc_steps=self.args.acc_step)
+        self.val_metric = Statistics(["f1"], device=self.args.device,
+                                     acc_steps=self.args.acc_step)
         self.all_results = []
 
     def train_acc_step(self, i, batch):
@@ -131,8 +133,8 @@ class BertTrainer(Trainer):
     def val_acc_step(self, i, batch):
         batch = tuple(t.to(self.device) for t in batch)
         outputs = self.model(**{"input_ids": batch[0],
-                           "attention_mask": batch[1],
-                           "return_dict": False})
+                                "attention_mask": batch[1],
+                                "return_dict": False})
 
         for i, feature_index in enumerate(batch[3]):  # feature_indices = batch[3]
             output = [output[i].detach().cpu().tolist() for output in outputs]

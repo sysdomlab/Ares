@@ -1,0 +1,7 @@
+name,time,application,num_replicas,batch_size
+cifar10-0,30,cifar10,6,2048
+deepspeech2-1,110,deepspeech2,6,320
+ncf-2,135,ncf,1,32768
+imagenet-11,164,imagenet,32,6400
+bert-27,583,bert,12,384
+yolov3-31,637,yolov3,4,64

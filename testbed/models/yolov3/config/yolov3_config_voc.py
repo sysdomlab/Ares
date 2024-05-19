@@ -33,7 +33,7 @@ TRAIN = {
     "WEIGHT_DECAY": 0.0005,
     "LR_INIT": 1e-4,
     "LR_END": 1e-6,
-    "WARMUP_EPOCHS": 2  # or None
+    "WARMUP_EPOCHS": 0  # or None
 }
 
 # test
