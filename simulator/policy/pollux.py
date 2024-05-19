@@ -112,7 +112,7 @@ class PolluxPolicy(object):
                 best_nodes = num_nodes
         return int(best_nodes)
 
-    def optimize(self, jobs, nodes, base_allocations, node_template):
+    def optimize(self, jobs, nodes, base_allocations, node_template=None):
         """
         Run one optimization cycle of the Pollux scheduling policy.
 

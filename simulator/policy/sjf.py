@@ -13,7 +13,7 @@ class SJFPolicy(object):
                  jobs: Dict[Tuple[str, str], JobInfo],
                  nodes: Dict[str, NodeInfo],
                  prev_allocations: Dict[Tuple[str, str], List[str]],
-                 node_template):
+                 node_template=None):
         print(f">>> jobs: {jobs}")
         print(f">>> nodes: {nodes}")
         print(f">>> prev_allocations: {prev_allocations}")

@@ -16,7 +16,7 @@ class TiresiasPolicy(object):
         self._last_pending_time = collections.Counter()
         self._pending_time = collections.Counter()
 
-    def optimize(self, jobs, nodes, prev_allocations, node_template):
+    def optimize(self, jobs, nodes, prev_allocations, node_template=None):
         event_time = int(self._time_fn())
         # Remove completed jobs.
         self._queue_0 = [key for key in self._queue_0 if key in jobs]

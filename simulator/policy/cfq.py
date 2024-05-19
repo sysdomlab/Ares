@@ -34,7 +34,7 @@ class CFQPolicy(object):
                  jobs: Dict[Tuple[str, str], JobInfo],
                  nodes: Dict[str, NodeInfo],
                  prev_allocations: Dict[Tuple[str, str], List[str]],
-                 node_template):
+                 node_template=None):
         prev_allocations = {k: v for k, v in prev_allocations.items() if k in jobs}
         # print(f">>> jobs: {jobs}")
         # print(f">>> nodes: {nodes}")
@@ -75,7 +75,7 @@ class CFQPolicy(object):
             for i, (x, y, _) in enumerate(self.gps_sys.fair_jobs[key]["scale_factor"]):
                 if x < desire_replicas:
                     continue
-                if y > 1 / i:
+                if y > 0.5:
                     desire_replicas = x
                 else:
                     break

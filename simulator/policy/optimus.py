@@ -7,7 +7,7 @@ class OptimusPolicy(object):
     def __init__(self):
         pass
 
-    def optimize(self, jobs, nodes, prev_allocations, node_template):
+    def optimize(self, jobs, nodes, prev_allocations, node_template=None):
         allocations = {k: v for k, v in prev_allocations.items() if k in jobs}
         for job in jobs.values():
             completion_epoch = job.application.get_completion_epoch(job.target_batch_size)
