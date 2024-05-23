@@ -120,7 +120,7 @@ def get_cmd(job_name, allocation, rank, acc_bsz, acc_step):
     master_port = get_port(job_name)
     max_epoch = APPLICATIONS[model_name].max_epochs
     return " ".join([
-        python3, "framework.py",
+        python3, "-u", "framework.py",
         "--job_name", job_name,
         "--master_address", master_address,
         "--master_port", str(master_port),

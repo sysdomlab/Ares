@@ -27,3 +27,7 @@ def get_checkpoint_path(job_name, return_dir=False):
     if return_dir:
         return f"/home/cchen/yfliu/ares/checkpoints/{job_name}"
     return f"/home/cchen/yfliu/ares/checkpoints/{job_name}/checkpoint.pth"
+
+
+def get_log_path():
+    return "/home/cchen/yfliu/ares/logs/"

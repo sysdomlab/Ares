@@ -12,7 +12,8 @@ from torch.utils.data import DistributedSampler, DataLoader
 
 from models import env
 from models.trainer import Trainer
-from torch.nn.parallel import DistributedDataParallel
+# from torch.nn.parallel import DistributedDataParallel as DDP
+from models.tool import AresDataParallel as DDP
 
 from models.yolov3.model.loss.yolo_loss import YoloV3Loss
 from models.yolov3.model.yolov3 import Yolov3
@@ -36,7 +37,7 @@ class YOLOv3Trainer(Trainer):
         print('==> Building model..')
         self.model = Yolov3().to(self.args.device)
         # self.model.load_darknet_weights(weight_path)
-        self.model = DistributedDataParallel(self.model, device_ids=[self.args.device], output_device=self.args.device)
+        self.model = DDP(self.model, device_ids=[self.args.device], output_device=self.args.device)
         self.criterion = YoloV3Loss(anchors=cfg.MODEL["ANCHORS"], strides=cfg.MODEL["STRIDES"],
                                     iou_threshold_loss=cfg.TRAIN["IOU_THRESHOLD_LOSS"])
         self.optimizer = SGD(self.model.parameters(), lr=cfg.TRAIN["LR_INIT"],

@@ -11,7 +11,8 @@ from models.deepspeech2.data.data_loader import SpectrogramDataset, AudioDataLoa
 from models.deepspeech2.decoder import GreedyDecoder
 from models.deepspeech2.model import supported_rnns, DeepSpeech
 from models.trainer import Trainer
-from torch.nn.parallel import DistributedDataParallel
+# from torch.nn.parallel import DistributedDataParallel as DDP
+from models.tool import AresDataParallel as DDP
 
 from models.tool import Statistics
 
@@ -66,7 +67,7 @@ class Deepspeech2Trainer(Trainer):
                                 rnn_type=supported_rnns[self.rnn_type.lower()],
                                 audio_conf=audio_conf,
                                 bidirectional=self.bidirectional).to(self.args.device)
-        self.model = DistributedDataParallel(self.model, device_ids=[self.args.device], output_device=self.args.device)
+        self.model = DDP(self.model, device_ids=[self.args.device], output_device=self.args.device)
         self.decoder = GreedyDecoder(labels)
         self.criterion = torch.nn.CTCLoss()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=self.lr, momentum=self.momentum, nesterov=False)

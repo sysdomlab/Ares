@@ -12,7 +12,8 @@ from models.ncf import data_utils, config
 from models.ncf.evaluate import hit, ndcg
 from models.ncf.model import NCF
 from models.trainer import Trainer
-from torch.nn.parallel import DistributedDataParallel
+# from torch.nn.parallel import DistributedDataParallel as DDP
+from models.tool import AresDataParallel as DDP
 
 from models.tool import Statistics
 
@@ -38,7 +39,7 @@ class NCFTrainer(Trainer):
         train_data, test_data, user_num, item_num, train_mat = data_utils.load_all(data_path=self.data_dir)
         self.model = NCF(user_num, item_num, self.factor_num, self.num_layers,
                          self.dropout, config.model).to(self.args.device)
-        self.model = DistributedDataParallel(self.model, device_ids=[self.args.device], output_device=self.args.device)
+        self.model = DDP(self.model, device_ids=[self.args.device], output_device=self.args.device)
         self.criterion = BCEWithLogitsLoss()
         self.optimizer = Adam(self.model.parameters(), betas=(0.9, 0.999), lr=self.lr)
         self.scheduler = optim.lr_scheduler.MultiStepLR(self.optimizer, [4, 7, 10], gamma=0.2)

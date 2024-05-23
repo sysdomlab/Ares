@@ -10,7 +10,8 @@ from transformers.data.processors.squad import SquadResult
 
 from models import env
 from models.trainer import Trainer
-from torch.nn.parallel import DistributedDataParallel
+# from torch.nn.parallel import DistributedDataParallel as DDP
+from models.tool import AresDataParallel as DDP
 
 from models.tool import Statistics
 
@@ -72,7 +73,7 @@ class BertTrainer(Trainer):
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path, do_lower_case=self.do_lower_case)
         self.model = AutoModelForQuestionAnswering.from_pretrained(self.model_name_or_path, config=self.config)
         self.model = self.model.to(self.device)
-        self.model = DistributedDataParallel(self.model, device_ids=[self.args.device], output_device=self.args.device)
+        self.model = DDP(self.model, device_ids=[self.args.device], output_device=self.args.device)
         no_decay = ["bias", "LayerNorm.weight"]
         optimizer_grouped_parameters = [
             {"params": [p for n, p in self.model.named_parameters() if not any(nd in n for nd in no_decay)],

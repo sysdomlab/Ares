@@ -75,6 +75,7 @@ class Statistics:
         self.iteration = 0
         self.metric_values.zero_()
         self.metric_batch.zero_()
+        self.acc_num = 0
         self.metric_current = None
 
     def __str__(self):
@@ -100,8 +101,8 @@ class AresDataParallel(DistributedDataParallel):
         Variable._execution_engine.queue_callback(self._queue_callback)
 
         if self.sync_time is not None:
-            print("WARNING: Gradient synchronization time already recorded. This should not happen.")
-        self.sync_time = 0
+            # print("WARNING: Gradient synchronization time already recorded. This should not happen.")
+            self.sync_time = None
 
     def _queue_callback(self):
         if self._final_callback_queued:
@@ -119,8 +120,14 @@ class AresDataParallel(DistributedDataParallel):
         else:
             self.sync_time = time.time() - self._sync_start
 
+        # print(f"_final_callback: {self.sync_time}")
+
     def get_sync_time(self):
+        """
+        Returns the time it took to synchronize gradients in the last backward pass.
+        sync_time will be generated only after the backward pass is complete.
+        """
         sync_time = self.sync_time
         self._sync_start = None
         self.sync_time = None
-        return sync_time
+        return sync_time or 0

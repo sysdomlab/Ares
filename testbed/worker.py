@@ -1,7 +1,9 @@
 import argparse
-import json
 import os
+import signal
+import time
 
+import gevent
 import zerorpc
 import subprocess
 
@@ -87,16 +89,6 @@ class Worker(object):
 
         return proc["proc"].poll(), f"Killed proc {proc_name} on GPU {proc['gpu_id']}"
 
-    def kill_job(self, job_name):
-        """
-        Kill all processes of a job on this machine.
-
-        :param job_name: format as f"{job_name}*"
-        """
-        procs_to_kill = [k for k in self.registered_processes.keys() if k.startswith(job_name)]
-        for proc_name in procs_to_kill:
-            self.kill_proc(proc_name)
-
     def stats_proc(self, proc_name):
         """
         Get the status of a process on this machine.
@@ -124,16 +116,6 @@ class Worker(object):
         print(f"Proc {proc_name} not found.")
         return None
 
-    def job_stats(self, job_name):
-        """
-        Get the status of all processes of a job on this machine.
-
-        :param job_name: format as f"{job_name}*"
-        :return: a list of dictionaries containing the status of all processes of the job.
-        """
-        procs_to_stats = [k for k in self.registered_processes.keys() if k.startswith(job_name)]
-        return [self.stats_proc(proc_name) for proc_name in procs_to_stats]
-
     def get_gpu_alloc(self):
         """
         Get the GPU allocation status.
@@ -141,6 +123,27 @@ class Worker(object):
         :return: a dictionary containing the GPU allocation status.
         """
         return self.gpu_alloc
+
+    def cleanup(self):
+        """
+        cleanup all the registered processes and release the GPUs.
+        """
+        print("Cleaning up all the registered processes and release the GPUs.")
+        for proc_name, proc in self.registered_processes.items():
+            if proc["proc"].poll() is None:
+                print(f"terminate proc {proc_name} on GPU {proc['gpu_id']}")
+                proc["proc"].terminate()
+        for proc_name, proc in self.registered_processes.items():
+            timeout, start_time = 10, time.time()
+            while proc["proc"].poll() is None:
+                time.sleep(1)
+                if time.time() - start_time > timeout:
+                    print(f"kill proc {proc_name} forcefully")
+                    proc["proc"].kill()
+                    break
+
+        self.registered_processes = {}
+        self.gpu_alloc = {str(i): [] for i in range(len(self.gpu_alloc))}
 
 
 if __name__ == '__main__':
@@ -154,6 +157,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print(f"start the RPC server on {args.local_ip}:{args.local_port}")
-    s = zerorpc.Server(Worker(gpu_num=args.gpu_num, ip_address=args.local_ip))
-    s.bind(f"tcp://0.0.0.0:{args.local_port}")
-    s.run()
+    core = Worker(gpu_num=args.gpu_num, ip_address=args.local_ip)
+    server = zerorpc.Server(core)
+    server.bind(f"tcp://0.0.0.0:{args.local_port}")
+    gevent.signal_handler(signal.SIGINT, server.stop)
+    gevent.signal_handler(signal.SIGTERM, server.stop)
+    server.run()
+    core.cleanup()

@@ -12,7 +12,8 @@ from models import env
 from models.cifar10.models import ResNet18
 from models.trainer import Trainer
 import torchvision.transforms as transforms
-from torch.nn.parallel import DistributedDataParallel
+# from torch.nn.parallel import DistributedDataParallel as DDP
+from models.tool import AresDataParallel as DDP
 
 from models.tool import Statistics
 
@@ -31,7 +32,7 @@ class Cifar10Trainer(Trainer):
         # Model
         print('==> Building model..')
         self.model = ResNet18().to(self.args.device)
-        self.model = DistributedDataParallel(self.model, device_ids=[self.args.device], output_device=self.args.device)
+        self.model = DDP(self.model, device_ids=[self.args.device], output_device=self.args.device)
         self.criterion = CrossEntropyLoss()
         self.optimizer = SGD(self.model.parameters(), lr=self.lr, momentum=0.9, weight_decay=5e-4)
         self.scheduler = ExponentialLR(self.optimizer, 0.0133 ** (1.0 / self.args.max_epoch))

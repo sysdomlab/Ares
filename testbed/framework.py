@@ -78,7 +78,7 @@ def main(args):
           f"global_bsz = {args.acc_bsz * args.acc_step * args.world_size}")
 
     # 2. train loop
-    performance_metric = Statistics(["batch", "gpu", "data"], args.device, acc_steps=args.acc_step)
+    performance_metric = Statistics(["batch", "gpu", "data", "sync"], args.device, acc_steps=args.acc_step)
     # DLT jobs' training progress(e.g. epoch, iteration) is the only thing that Ares needs to track.
     # Other functions like gradient accumulation, model saving, graceful exit, etc. are application-specific.
     start_epoch, start_iter, completed = load_job_state(len(trainer.train_loader), args.job_name)
@@ -112,7 +112,12 @@ def main(args):
 
             torch.cuda.synchronize()
             gpu_time = time.time() - timer_2
-            performance_metric.accumulate_in_batch([data_time + gpu_time, data_time, gpu_time])
+            performance_metric.accumulate_in_batch([data_time + gpu_time, gpu_time, data_time,
+                                                    trainer.model.get_sync_time()])
+            timer_2 = time.time()
+            if i == 0:
+                performance_metric.reset()
+
             # 2.1.3 print training info
             if is_sync_step(i, args.acc_step, trainer):
                 trainer.train_metric.update_local()
@@ -130,8 +135,6 @@ def main(args):
                 if get_signal_received():  # graceful exit
                     trainer.save_checkpoint(epoch)  # save application-specific checkpoint
                     exit(143)
-
-            timer_2 = time.time()
 
         # 2.2 validate for one epoch
         trainer.model.eval()
@@ -158,18 +161,18 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--job_name', type=str, default='deepspeech2-0')
+    parser.add_argument('--job_name', type=str, default='imagenet-0')
     parser.add_argument('--master_address', type=str, default='10.0.0.20')
     parser.add_argument('--master_port', type=str, default='17001')
     parser.add_argument('--world_size', type=int, default=1)
     parser.add_argument('--global_rank', type=int, default=0)
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--acc_bsz', type=int, default=20)
-    parser.add_argument('--acc_step', type=int, default=1)
+    parser.add_argument('--acc_bsz', type=int, default=100)
+    parser.add_argument('--acc_step', type=int, default=2)
 
     parser.add_argument('--backend', type=str, default="nccl")
 
-    parser.add_argument('--model_name', type=str, default='deepspeech2')
+    parser.add_argument('--model_name', type=str, default='imagenet')
     parser.add_argument('--max_epoch', type=int, default=20)
 
     parser.add_argument('--print_freq', type=int, default=10)

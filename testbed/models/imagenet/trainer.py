@@ -12,7 +12,8 @@ from torchvision.datasets import ImageFolder
 from models import env
 from models.trainer import Trainer
 import torchvision.transforms as transforms
-from torch.nn.parallel import DistributedDataParallel
+# from torch.nn.parallel import DistributedDataParallel as DDP
+from models.tool import AresDataParallel as DDP
 
 from models.tool import Statistics
 
@@ -50,7 +51,7 @@ class ImagenetTrainer(Trainer):
         # Model
         print('==> Building model..')
         self.model = torchvision.models.resnet50().to(self.args.device)
-        self.model = DistributedDataParallel(self.model, device_ids=[self.args.device], output_device=self.args.device)
+        self.model = DDP(self.model, device_ids=[self.args.device], output_device=self.args.device)
         self.criterion = CrossEntropyLoss().to(self.args.device)
         self.optimizer = SGD(self.model.parameters(), lr=self.lr, momentum=self.momentum,
                              weight_decay=self.weight_decay)
