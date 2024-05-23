@@ -127,6 +127,9 @@ def main(args):
                     performance_metric.synchronize()
                     print(f'[Epoch {epoch}][{((i / len(trainer.train_loader)) * 100):.2f}%]:'
                           f'{performance_metric}{trainer.train_metric}')
+                    if args.profile:
+                        dist.barrier()
+                        exit(0)
                 if first_batch:
                     performance_metric.reset()
                     first_batch = False
@@ -187,6 +190,7 @@ if __name__ == '__main__':
     parser.add_argument('--max_epoch', type=int, default=20)
 
     parser.add_argument('--print_freq', type=int, default=10)
+    parser.add_argument('--profile', action='store_true')
 
     start = time.time()
     main(parser.parse_args())

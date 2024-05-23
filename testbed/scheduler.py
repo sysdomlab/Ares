@@ -147,7 +147,7 @@ class Job(object):
 class Cluster(object):
     def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60):
         assert 1 <= num_gpus <= 4
-        self.nodes = nodes.split(",")
+        self.nodes = nodes.split(" ")
         self.num_nodes = len(self.nodes)
         self.num_gpus = num_gpus
         self.interval = interval
@@ -433,16 +433,14 @@ if __name__ == "__main__":
     # nohup python3 scheduler.py > ./scheduler.log 2>&1 &
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, help="path to workload csv",
-                        # default="./workload/workloads-1.0/workload-1.csv")
-                        default="./workload/workload-debug.csv")
+                        default="./workload/workloads-0.5/workload-1.csv")
+                        # default="./workload/workload-debug.csv")
     parser.add_argument("--policy", type=str, default="cfq",
                         choices=get_all_policies())
-    parser.add_argument("--nodes", type=str, default=",".join(["10.0.0.23", "10.0.0.24", "10.0.0.20"]),
-                        help="min number of nodes in the cluster")
-    # parser.add_argument("--nodes", type=str, default=",".join([f"10.0.0.{i}" for i in range(23, 23 + 4)]),
-    #                     help="min number of nodes in the cluster")
-    # parser.add_argument("--nodes", type=str, default=",".join([f"10.0.0.{i}" for i in range(19, 19 + 16)]),
-    #                     help="min number of nodes in the cluster")
+    parser.add_argument("--nodes", type=str,
+                        default=" ".join(["10.0.0.21", "10.0.0.22", "10.0.0.23", "10.0.0.24"]))
+    # parser.add_argument("--nodes", type=str, default=" ".join([f"10.0.0.{i}" for i in range(23, 23 + 4)]))
+    # parser.add_argument("--nodes", type=str, default=" ".join([f"10.0.0.{i}" for i in range(19, 19 + 16)]))
     parser.add_argument("--interval", type=int, default=60,
                         help="scheduling interval in seconds")
     parser.add_argument("--num-gpus", type=int, default=4,

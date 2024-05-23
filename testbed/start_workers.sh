@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Array of IP addresses
-ips=("10.0.0.23" "10.0.0.24" "10.0.0.20")
+ips=("10.0.0.21" "10.0.0.22" "10.0.0.23" "10.0.0.24")
 
 python3=/home/cchen/miniconda3/envs/yfliu/bin/python3
 work_dir=/home/cchen/yfliu/cluster_schedule/pollux/testbed

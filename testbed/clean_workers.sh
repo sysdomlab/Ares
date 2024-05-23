@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Array of IP addresses
-ips=("10.0.0.23" "10.0.0.24" "10.0.0.20")
+ips=("10.0.0.21" "10.0.0.22" "10.0.0.23" "10.0.0.24")
 
 # Loop through the IPs and execute the clean-up command on each
 for ip in "${ips[@]}"; do
