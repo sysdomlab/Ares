@@ -9,10 +9,10 @@ import pandas
 import zerorpc
 
 from framework import load_job_state
-from controller import get_cmd
+from models.tool import get_cmd
 from models.env import get_checkpoint_path
 from policy.applications import APPLICATIONS
-from goodput import GoodputFunction, fit_perf_params
+from policy.goodput import GoodputFunction, fit_perf_params
 from policy.speedup import SpeedupFunction
 from policy.utils import JobInfo, NodeInfo
 

@@ -12,6 +12,9 @@ import torch.cuda
 from torch.autograd import Variable
 from torch.nn.parallel import DistributedDataParallel
 
+from models.env import get_python3_path
+from policy.applications import memoize, APPLICATIONS
+
 
 def set_random_seed(seed=1234):
     random.seed(seed)
@@ -80,6 +83,37 @@ class Statistics:
 
     def __str__(self):
         return '\t' + '\t'.join([f'{name}={value[1]:.4f}({value[0]:.4f})' for name, value in self.get_data().items()])
+
+
+candidate_port = 17000
+
+
+@memoize
+def get_port(job_name):
+    global candidate_port
+    candidate_port += 1
+    return candidate_port
+
+
+def get_cmd(job_name, allocation, rank, acc_bsz, acc_step):
+    master_address = min(allocation)
+    world_size = len(allocation)
+    model_name = job_name.split('-')[0]
+    python3 = get_python3_path()
+    master_port = get_port(job_name)
+    max_epoch = APPLICATIONS[model_name].max_epochs
+    return " ".join([
+        python3, "-u", "framework.py",
+        "--job_name", job_name,
+        "--master_address", master_address,
+        "--master_port", str(master_port),
+        "--world_size", str(world_size),
+        "--global_rank", str(rank),
+        "--acc_bsz", str(acc_bsz),
+        "--acc_step", str(acc_step),
+        "--model_name", model_name,
+        "--max_epoch", str(max_epoch),
+    ])
 
 
 class AresDataParallel(DistributedDataParallel):
