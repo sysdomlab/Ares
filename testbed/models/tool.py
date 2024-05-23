@@ -50,7 +50,7 @@ class Statistics:
         self.metric_batch = torch.tensor([0] * len(metrics), dtype=torch.float64, device=device)
         self.acc_num = 0
         self.acc_steps = acc_steps
-        self.metric_current = None
+        self.metric_current = self.metric_batch.clone()
 
     def accumulate_in_batch(self, values: List[float]):
         self.metric_batch += torch.tensor(values, dtype=torch.float64, device=self.device)
@@ -79,7 +79,7 @@ class Statistics:
         self.metric_values.zero_()
         self.metric_batch.zero_()
         self.acc_num = 0
-        self.metric_current = None
+        self.metric_current.zero_()
 
     def __str__(self):
         return '\t' + '\t'.join([f'{name}={value[1]:.4f}({value[0]:.4f})' for name, value in self.get_data().items()])

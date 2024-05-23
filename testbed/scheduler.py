@@ -110,7 +110,8 @@ class Job(object):
 
         self.attained_service += elapse_time * sum(self.placement)
         # 查询是否结束
-        self.epoch, _, completed = load_job_state(0, self.name[1])  # 获取进度
+        job_state = load_job_state(self.name[1])  # 获取进度
+        self.epoch, completed = int(job_state["epoch"]), job_state["completed"]
         placement = tuple(filter(None, self.placement))
         num_nodes, num_replicas = len(placement), sum(placement)
         batch_size = num_replicas * self.atomic_bsz * (self.accum_steps + 1)

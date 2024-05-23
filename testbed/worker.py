@@ -76,11 +76,13 @@ class Worker(object):
         proc = self.registered_processes[proc_name]
 
         if proc["proc"].poll() is not None:
-            print(f"Proc {proc_name} on GPU {proc['gpu_id']} has already finished.")
+            msg = (f"Proc {proc_name} on GPU {proc['gpu_id']} has already finished "
+                   f"with returncode {proc['proc'].poll()}.")
+            print(msg)
             del self.registered_processes[proc_name]
             self.gpu_alloc[proc["gpu_id"]].remove(proc_name)
 
-            return 0, f"Proc {proc_name} on GPU {proc['gpu_id']} has already finished."
+            return 0, msg
 
         print(f"Killing proc {proc_name} on GPU {proc['gpu_id']}")
         if proc["proc"].poll() is None:

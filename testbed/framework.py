@@ -28,26 +28,24 @@ def get_trainer_cls(model_name):
     }[model_name]
 
 
-def load_job_state(dataloader_len, job_name):
+def load_job_state(job_name):
     job_state_path = env.get_job_state_path(job_name)
     if not os.path.exists(job_state_path):
         os.makedirs(os.path.dirname(job_state_path), exist_ok=True)
-        return 0, 0, False
+        return {
+            'epoch': 0,
+            'completed': False,
+        }
     with open(job_state_path, 'r') as f:
         state = json.load(f)
-    epoch = state['epoch']
-    completed = state['completed']
-    return int(epoch), int((epoch - int(epoch)) * dataloader_len), completed
+    return state
 
 
-def save_job_state(job_name, epoch, iterations, dataloader_len, completed=False):
+def save_job_state(job_name, content: dict):
     if dist.get_rank() == 0:
         file_name = env.get_job_state_path(job_name)
         with open(file_name + ".tmp", 'w') as f:
-            json.dump({
-                'epoch': epoch + iterations / dataloader_len,
-                'completed': completed
-            }, f)
+            json.dump(content, f)
         os.rename(file_name + ".tmp", file_name)  # atomic write
 
 
@@ -78,20 +76,22 @@ def main(args):
           f"global_bsz = {args.acc_bsz * args.acc_step * args.world_size}")
 
     # 2. train loop
-    performance_metric = Statistics(["batch", "gpu", "data", "sync"], args.device, acc_steps=args.acc_step)
+    performance_metric = Statistics(["batch", "sync", "gpu", "data", "other"], args.device, acc_steps=args.acc_step)
     # DLT jobs' training progress(e.g. epoch, iteration) is the only thing that Ares needs to track.
     # Other functions like gradient accumulation, model saving, graceful exit, etc. are application-specific.
-    start_epoch, start_iter, completed = load_job_state(len(trainer.train_loader), args.job_name)
-    if completed:
-        print(f"job {args.job_name} has already completed, exit")
-        exit(0)
+    job_state = load_job_state(args.job_name)
+    start_epoch = int(job_state["epoch"])
+    start_iter = int((job_state["epoch"] - int(job_state["epoch"])) * len(trainer.train_loader))
+
     signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
     signal.signal(signal.SIGTERM, signal_handler)  # 正常终止信号
+
     print(f">>> initializing time {time.time() - timer_1}s")
     print(f">>> start from epoch {start_epoch}, iter {start_iter}")
     for epoch in range(start_epoch, args.max_epoch):  # set start_epoch from checkpoint
         # 2.1 train for one epoch
-        timer_1, timer_2 = time.time(), time.time()
+        timer_1, timer_2, first_batch = time.time(), time.time(), True
+        gpu_time, data_time, other_time = 0, 0, 0
         trainer.model.train()
         for i, batch in enumerate(trainer.train_loader):
             # 2.1.1 train for one acc_bsz
@@ -112,29 +112,37 @@ def main(args):
 
             torch.cuda.synchronize()
             gpu_time = time.time() - timer_2
-            performance_metric.accumulate_in_batch([data_time + gpu_time, gpu_time, data_time,
-                                                    trainer.model.get_sync_time()])
             timer_2 = time.time()
-            if i == 0:
-                performance_metric.reset()
+            performance_metric.accumulate_in_batch([data_time + gpu_time + other_time, trainer.model.get_sync_time(),
+                                                    gpu_time, data_time, other_time])
 
             # 2.1.3 print training info
             if is_sync_step(i, args.acc_step, trainer):
                 trainer.train_metric.update_local()
                 performance_metric.update_local()
                 # 2.1.1.1 print training info
-                if (i + 1) % (args.acc_step * args.print_freq) == 0:
+                # ignore the first batch's performance metric
+                if (i + 1) % (args.acc_step * args.print_freq) == 0 and not first_batch:
                     trainer.train_metric.synchronize()
                     performance_metric.synchronize()
                     print(f'[Epoch {epoch}][{((i / len(trainer.train_loader)) * 100):.2f}%]:'
                           f'{performance_metric}{trainer.train_metric}')
+                if first_batch:
+                    performance_metric.reset()
+                    first_batch = False
 
                 # 2.1.1.3 save persistent state
-                save_job_state(args.job_name, epoch, i + 1, len(trainer.train_loader))  # save Ares job state
+                save_job_state(args.job_name, {
+                    'epoch': epoch + (i + 1) / len(trainer.train_loader),
+                    'completed': False
+                })  # save Ares job state
                 dist.barrier()
                 if get_signal_received():  # graceful exit
                     trainer.save_checkpoint(epoch)  # save application-specific checkpoint
                     exit(143)
+
+            other_time = time.time() - timer_2
+            timer_2 = time.time()
 
         # 2.2 validate for one epoch
         trainer.model.eval()
@@ -155,20 +163,23 @@ def main(args):
 
         print(f'Finish Epoch {epoch}({time.time() - timer_1:.2f}s): val_metric {trainer.val_metric}')
 
-    save_job_state(args.job_name, args.max_epoch, 0, len(trainer.train_loader), completed=True)
+    save_job_state(args.job_name, {
+        'epoch': args.max_epoch,
+        'completed': True
+    })
     dist.destroy_process_group()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--job_name', type=str, default='imagenet-0')
+    parser.add_argument('--job_name', type=str, default='imagenet-11')
     parser.add_argument('--master_address', type=str, default='10.0.0.20')
     parser.add_argument('--master_port', type=str, default='17001')
     parser.add_argument('--world_size', type=int, default=1)
     parser.add_argument('--global_rank', type=int, default=0)
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--acc_bsz', type=int, default=100)
-    parser.add_argument('--acc_step', type=int, default=2)
+    parser.add_argument('--acc_bsz', type=int, default=96)
+    parser.add_argument('--acc_step', type=int, default=11)
 
     parser.add_argument('--backend', type=str, default="nccl")
 
