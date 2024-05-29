@@ -43,7 +43,7 @@ class PolluxPolicy(object):
     def _allocations_to_state(self, allocations, jobs, nodes):
         jobs_index = {key: idx for idx, key in enumerate(jobs)}
         nodes_index = {key: idx for idx, key in enumerate(nodes)}
-        state = np.zeros((len(jobs), len(nodes)), dtype=np.int)
+        state = np.zeros((len(jobs), len(nodes)), dtype=np.int64)
         for job_key, alloc in allocations.items():
             for node_key in (key for key in alloc if key in nodes_index):
                 state[jobs_index[job_key], nodes_index[node_key]] += 1
@@ -62,7 +62,7 @@ class PolluxPolicy(object):
         # current genetic algorithm states.
         #shape = (len(self._prev_states), len(jobs), 2 * len(nodes))
         shape = (len(self._prev_states), len(jobs), len(nodes))
-        states = np.zeros(shape, dtype=np.int)
+        states = np.zeros(shape, dtype=np.int64)
         jobs_src = [i for i, key in enumerate(self._prev_jobs) if key in jobs]
         jobs_dst = [i for i, key in enumerate(jobs) if key in self._prev_jobs]
         placeholder = len(self._prev_nodes)  # Next placeholder node to copy.
@@ -152,7 +152,7 @@ class PolluxPolicy(object):
             sorted(nodes.items(), key=lambda kv: (kv[1].preemptible, kv[0])))
         #base_state = np.concatenate(
         #    (self._allocations_to_state(base_allocations, jobs, nodes),
-        #     np.zeros((len(jobs), len(nodes)), dtype=np.int)), axis=1)
+        #     np.zeros((len(jobs), len(nodes)), dtype=np.int64)), axis=1)
         base_state = \
             self._allocations_to_state(base_allocations, jobs, nodes)
 
@@ -255,13 +255,13 @@ class Problem(pymoo.model.problem.Problem):
                 atomic_bsz_range=job.speedup_fn._atomic_bsz_range,
                 accumulation=job.speedup_fn._accumulation)[0]
         # Upper bound each job: <replicas on node 0> <replicas on node 1> ...
-        self._max_replicas = np.zeros(base_state.shape, dtype=np.int)
+        self._max_replicas = np.zeros(base_state.shape, dtype=np.int64)
         for j, job in enumerate(jobs):
             for n, node in enumerate(nodes):
                 self._max_replicas[j, n] = min(
                     node.resources[rtype] // job.resources[rtype]
                     for rtype in rtypes if job.resources.get(rtype, 0) > 0)
-        super().__init__(n_var=self._base_state.size, n_obj=2, type_var=np.int)
+        super().__init__(n_var=self._base_state.size, n_obj=2, type_var=np.int64)
 
     def get_cluster_utilities(self, states):
         """
@@ -305,7 +305,7 @@ class Problem(pymoo.model.problem.Problem):
         for idx, job in enumerate(self._jobs):
             speedup.append(job.speedup_fn(
                 num_nodes[:, idx], num_replicas[:, idx]))
-        return np.stack(speedup, axis=1).astype(np.float)
+        return np.stack(speedup, axis=1).astype(np.float64)
 
     def _get_cluster_sizes(self, states):
         return np.full(len(states), len(self._nodes))
