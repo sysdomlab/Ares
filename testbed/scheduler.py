@@ -440,7 +440,7 @@ class Cluster(object):
 
 
 if __name__ == "__main__":
-    # nohup python3 scheduler.py > ./scheduler.log 2>&1 &
+    # nohup python3 -u scheduler.py > ./scheduler.log 2>&1 &
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, help="path to workload csv",
                         default="./workload/workloads-4h-40j/workload-1.csv")
