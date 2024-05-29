@@ -55,8 +55,8 @@ def get_all_configs(application):
 
 
 if __name__ == '__main__':
-    # nohup python3 -u profiler.py > ./profiler.log 2>&1 &
-    available_node = ("10.0.0.22", "10.0.0.23", "10.0.0.24", "10.0.0.26")
+    # nohup python3 -u profiler.py > /home/cchen/yfliu/ares/logs/profiler.log 2>&1 &
+    available_node = ("10.0.0.23", "10.0.0.24", "10.0.0.25", "10.0.0.26")
     connects = {}
     for node in available_node:
         if node is not None:

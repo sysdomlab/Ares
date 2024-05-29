@@ -382,7 +382,8 @@ class Cluster(object):
                 job = self.jobs[job_name]
                 cmd = get_cmd(job_name=job_name[1], allocation=new_allocations[job_name], rank=rank,
                               acc_bsz=job.atomic_bsz, acc_step=job.accum_steps + 1)
-                out_file = f"{get_checkpoint_path(job_name[1], return_dir=True)}/restart_{job.num_restarts}_rank_{rank}.log"
+                out_file = (f"{get_checkpoint_path(job_name[1], return_dir=True)}/"
+                            f"restart_{job.num_restarts}_rank_{rank}.log")
                 print(f"self.connects[{node_ip}].run_proc({proc_name}, {cmd}, {gpu_id}, {out_file})")
                 self.connects[node_ip].run_proc(proc_name, cmd, gpu_id, out_file)  # 非阻塞发送启动命令
         print(f"finished_proc: {finished_proc}")
@@ -432,9 +433,9 @@ class Cluster(object):
         jct_dict = self.get_jcts()
         print(f"Completed jobs [{len(jct_dict)}]:")
         print(jct_dict)
-        print({val["name"]: val["attained_service"]
-               for val in self.logs[-1]["submitted_jobs"]
-               if val["completion_time"] is not None})
+        # print({val["name"]: val["attained_service"]
+        #        for val in self.logs[-1]["submitted_jobs"]
+        #        if val["completion_time"] is not None})
         print("Average JCT:", sum(jct_dict.values()) / len(jct_dict) if jct_dict else 0)
 
 
@@ -444,7 +445,7 @@ if __name__ == "__main__":
     parser.add_argument("--workload", type=str, help="path to workload csv",
                         default="./workload/workloads-4h-40j/workload-1.csv")
                         # default="./workload/workload-debug.csv")
-    parser.add_argument("--policy", type=str, default="pollux",
+    parser.add_argument("--policy", type=str, default="cfq",
                         choices=get_all_policies())
     parser.add_argument("--nodes", type=str,
                         default=" ".join(["10.0.0.22", "10.0.0.23", "10.0.0.24", "10.0.0.26"]))
