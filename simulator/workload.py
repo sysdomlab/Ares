@@ -65,19 +65,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("-s", "--start", type=int, default=2,
                         help="starting hour")
-    parser.add_argument("-d", "--duration", type=int, default=8,
+    parser.add_argument("-d", "--duration", type=int, default=4,
                         help="total number of workload hours")
-    parser.add_argument("-n", "--num-jobs", type=int, default=160,
+    parser.add_argument("-n", "--num-jobs", type=int, default=40,
                         help="total number of jobs")
-    parser.add_argument("-o", "--output", type=str,
+    parser.add_argument("-o", "--output", type=str, default="workload/workloads-4h-20j",
                         help="path to output the workload")
     parser.add_argument("--seed", type=int, default=0,
                         help="random seed")
     args = parser.parse_args()
-    workload = generate(args.num_jobs, start=args.start,
-                        duration=args.duration, seed=args.seed)
-    csv = workload.set_index("name").to_csv(args.output)
-    if csv:
-        print(csv)
-    print(workload.groupby(["application", "num_replicas", "batch_size"])
-          .size().reset_index(name="count"))
+    for i in range(8):
+        output = f"workload/workloads-{args.duration}h-{args.num_jobs}j/workload-{i + 1}.csv"
+        os.makedirs(os.path.dirname(output), exist_ok=True)
+        seed = args.seed + i
+        workload = generate(args.num_jobs, start=args.start,
+                            duration=args.duration, seed=seed)
+        csv = workload.set_index("name").to_csv(output)
+        if csv:
+            print(csv)
+        print(workload.groupby(["application", "num_replicas", "batch_size"])
+              .size().reset_index(name="count"))
