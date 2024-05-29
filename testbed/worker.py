@@ -65,11 +65,12 @@ class Worker(object):
 
         return True, f"Running proc {proc_name} on GPU {gpu_id}"
 
-    def kill_proc(self, proc_name):
+    def kill_proc(self, proc_name, force=False):
         """
         Kill a process on this machine.
 
         :param proc_name: format as f"{job_name}:{rank}"
+        :param force: whether to force kill the process.
         """
         if proc_name not in self.registered_processes:
             return 0, f"process don't exist"
@@ -84,10 +85,14 @@ class Worker(object):
 
             return 0, msg
 
-        print(f"Killing proc {proc_name} on GPU {proc['gpu_id']}")
         if proc["proc"].poll() is None:
-            proc["proc"].terminate()
-            # proc["proc"].wait()
+            if not force:
+                print(f"Killing proc {proc_name} on GPU {proc['gpu_id']}")
+                proc["proc"].terminate()
+            else:
+                print(f"Force killing proc {proc_name} on GPU {proc['gpu_id']}!")
+                subprocess.Popen(f"kill -9 {proc['proc'].pid}", shell=True)
+                # proc["proc"].kill()
 
         return proc["proc"].poll(), f"Killed proc {proc_name} on GPU {proc['gpu_id']}"
 
@@ -151,7 +156,7 @@ class Worker(object):
 if __name__ == '__main__':
     # python3 worker.py --local_ip 10.0.0.19
     # python3 worker.py --local_ip 10.0.0.20
-    # nohup python3 worker.py --local_ip 10.0.0.20 > ./worker.log 2>&1 &
+    # nohup python3 worker.py --local_ip 10.0.0.20 > ./10.0.0.20.log 2>&1 &
     parser = argparse.ArgumentParser()
     parser.add_argument('--gpu_num', type=int, default=4)
     parser.add_argument('--local_ip', type=str)

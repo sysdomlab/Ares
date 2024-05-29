@@ -43,10 +43,10 @@ def load_job_state(job_name):
 
 def save_job_state(job_name, content: dict):
     if dist.get_rank() == 0:
-        file_name = env.get_job_state_path(job_name)
-        with open(file_name + ".tmp", 'w') as f:
+        job_state_path = env.get_job_state_path(job_name)
+        with open(job_state_path + ".tmp", 'w') as f:
             json.dump(content, f)
-        os.rename(file_name + ".tmp", file_name)  # atomic write
+        os.rename(job_state_path + ".tmp", job_state_path)  # atomic write
 
 
 def is_sync_step(iterations, acc_step, trainer):
@@ -83,6 +83,7 @@ def main(args):
     start_epoch = int(job_state["epoch"])
     start_iter = int((job_state["epoch"] - int(job_state["epoch"])) * len(trainer.train_loader))
 
+    dist.barrier()
     signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
     signal.signal(signal.SIGTERM, signal_handler)  # 正常终止信号
 
@@ -96,6 +97,9 @@ def main(args):
         for i, batch in enumerate(trainer.train_loader):
             # 2.1.1 train for one acc_bsz
             if epoch == start_epoch and i < start_iter:  # set start_iter from checkpoint
+                dist.barrier()
+                if get_signal_received():
+                    exit(143)
                 continue
 
             torch.cuda.synchronize()
@@ -122,7 +126,8 @@ def main(args):
                 performance_metric.update_local()
                 # 2.1.1.1 print training info
                 # ignore the first batch's performance metric
-                if (i + 1) % (args.acc_step * args.print_freq) == 0 and not first_batch:
+                if (((i + 1) % (args.acc_step * args.print_freq) == 0 or (i + 1) == len(trainer.train_loader))
+                        and not first_batch):
                     trainer.train_metric.synchronize()
                     performance_metric.synchronize()
                     print(f'[Epoch {epoch}][{((i / len(trainer.train_loader)) * 100):.2f}%]:'
@@ -156,9 +161,10 @@ def main(args):
                 if is_sync_step(i, args.acc_step, trainer):
                     trainer.val_metric.update_local()
 
-                if get_signal_received():
-                    print("exit at validation")
-                    exit(143)
+                    dist.barrier()
+                    if get_signal_received():
+                        print("exit at validation")
+                        exit(143)
 
         trainer.val_metric.synchronize()
         trainer.scheduler.step()
@@ -166,6 +172,8 @@ def main(args):
 
         print(f'Finish Epoch {epoch}({time.time() - timer_1:.2f}s): val_metric {trainer.val_metric}')
 
+    print(f"train complete in {time.time() - start}s")
+    dist.barrier()
     save_job_state(args.job_name, {
         'epoch': args.max_epoch,
         'completed': True
@@ -176,13 +184,13 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--job_name', type=str, default='imagenet-11')
-    parser.add_argument('--master_address', type=str, default='10.0.0.20')
+    parser.add_argument('--master_address', type=str, default='10.0.0.24')
     parser.add_argument('--master_port', type=str, default='17001')
     parser.add_argument('--world_size', type=int, default=1)
     parser.add_argument('--global_rank', type=int, default=0)
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--acc_bsz', type=int, default=96)
-    parser.add_argument('--acc_step', type=int, default=11)
+    parser.add_argument('--acc_bsz', type=int, default=75)
+    parser.add_argument('--acc_step', type=int, default=1)
 
     parser.add_argument('--backend', type=str, default="nccl")
 
@@ -194,4 +202,3 @@ if __name__ == '__main__':
 
     start = time.time()
     main(parser.parse_args())
-    print(f"train complete in {time.time() - start}s")

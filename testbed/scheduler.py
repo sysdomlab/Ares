@@ -318,16 +318,20 @@ class Cluster(object):
                     finished_proc.append((proc_name, (node_ip, gpu_id)))
                     res = self.connects[node_ip].stats_proc(proc_name)
                     print(f"self.connects[{node_ip}].stats_proc({proc_name}): {res}")
-                    assert res is not None and res.get("returncode") == 0
+                    assert res is not None
+                    if res.get("returncode") is None:
+                        print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) is still running")
+                        self.connects[node_ip].kill_proc(proc_name, force=True)
+                    if res.get("returncode") != 0:
+                        print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) exited unexpectedly")
                     self.gpu_alloc[(node_ip, gpu_id)].remove(f"{k[1]}:{rank}")
             else:
                 for rank, (node_ip, gpu_id) in enumerate(v):
                     proc_name = f"{k[1]}:{rank}"
                     res = self.connects[node_ip].stats_proc(proc_name)
                     print(f"self.connects[{node_ip}].stats_proc({proc_name}): {res}")
-                    if res is not None:
-                        assert res.get("returncode") in [0, None], (f"Process {proc_name}({node_ip}:{gpu_id}) "
-                                                                    f"exited unexpectedly")
+                    if res is not None and res.get("returncode") not in [0, None]:
+                        raise ValueError(f"Process {proc_name}({node_ip}:{gpu_id}) exited unexpectedly")
         self.running_allocations = {k: v for k, v in self.running_allocations.items() if k in job_infos}
         if not job_infos:
             return
@@ -348,13 +352,18 @@ class Cluster(object):
             del self.running_allocations[job_name]  # 将进程解除注册并需要等待确认进程停止
         # 2. wait for jobs to be killed
         for proc_name, (node_ip, gpu_id) in kill_proc:
-            time_out, start_time = 30, time.time()  # 有限时间等待进程停止，否则可能在进程管理方面出错或梯度累积过多
+            time_out, start_time = 60, time.time()  # 有限时间等待进程停止，否则可能在进程管理方面出错或梯度累积过多
+            force_kill_time, force_killed = 30, False
             while True:
                 res = self.connects[node_ip].stats_proc(proc_name)
                 # res = None
                 if res is None or res.get("returncode") is not None:
                     print(f"self.connects[{node_ip}].stats_proc({proc_name}): {res}")
                     break
+                if time.time() - start_time > force_kill_time and not force_killed:
+                    print(f"self.connects[{node_ip}].kill_proc({proc_name}, force=True)")
+                    self.connects[node_ip].kill_proc(proc_name, force=True)  # 超时后强制杀死进程
+                    force_killed = True
                 if time.time() - start_time > time_out:
                     raise ValueError(f"Timeout waiting for process {proc_name}({node_ip}:{gpu_id}) to be killed")
                 time.sleep(1)
@@ -433,12 +442,12 @@ if __name__ == "__main__":
     # nohup python3 scheduler.py > ./scheduler.log 2>&1 &
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, help="path to workload csv",
-                        default="./workload/workloads-0.5/workload-1.csv")
+                        default="./workload/workloads-4h-40j/workload-1.csv")
                         # default="./workload/workload-debug.csv")
-    parser.add_argument("--policy", type=str, default="cfq",
+    parser.add_argument("--policy", type=str, default="pollux",
                         choices=get_all_policies())
     parser.add_argument("--nodes", type=str,
-                        default=" ".join(["10.0.0.21", "10.0.0.22", "10.0.0.23", "10.0.0.24"]))
+                        default=" ".join(["10.0.0.22", "10.0.0.23", "10.0.0.24", "10.0.0.26"]))
     # parser.add_argument("--nodes", type=str, default=" ".join([f"10.0.0.{i}" for i in range(23, 23 + 4)]))
     # parser.add_argument("--nodes", type=str, default=" ".join([f"10.0.0.{i}" for i in range(19, 19 + 16)]))
     parser.add_argument("--interval", type=int, default=60,
