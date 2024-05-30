@@ -1,3 +1,4 @@
+import argparse
 import os
 import subprocess
 import time
@@ -118,13 +119,16 @@ def performance_profiling(available_node, configs):
 
 
 if __name__ == '__main__':
-    # nohup python3 -u profiler.py > /home/cchen/yfliu/ares/logs/profiler_scalability.log 2>&1 &
+    # nohup python3 -u profiler.py > /home/cchen/yfliu/ares/logs/profiler_placement.log 2>&1 &
+    # nohup python3 -u profiler.py --scalability > /home/cchen/yfliu/ares/logs/profiler_scalability.log 2>&1 &
 
-    scalability = False
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--scalability', action="store_true", help='profile scalability')
+    args = parser.parse_args()
 
-    if not scalability:
-        # profile placement.csv
-        available_node = ("10.0.0.23", "10.0.0.24", "10.0.0.25", "10.0.0.26")
+    if not args.scalability:
+        # profile placements.csv
+        available_node = ("10.0.0.11", "10.0.0.13", "10.0.0.15", "10.0.0.16")
         all_configs = []
         for app_name, app in APPLICATIONS.items():
             configs = get_placement_configs(app, scalability=False)
@@ -139,9 +143,9 @@ if __name__ == '__main__':
         # subprocess.Popen(f"mv /home/cchen/yfliu/ares/checkpoints/profile-* {ckp_path}", shell=True)
     else:
         # profile scalability.csv
-        available_node = ("10.0.0.12", "10.0.0.13",
-                          "10.0.0.15", "10.0.0.16", "10.0.0.17",
-                          "10.0.0.20", "10.0.0.21", "10.0.0.22")
+        available_node = ("10.0.0.17",
+                          "10.0.0.20", "10.0.0.21", "10.0.0.22",
+                          "10.0.0.23", "10.0.0.24", "10.0.0.25", "10.0.0.26")
         all_configs = []
         for app_name, app in APPLICATIONS.items():
             configs = get_placement_configs(app, scalability=True)

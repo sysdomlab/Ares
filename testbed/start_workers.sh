@@ -31,3 +31,7 @@ for ip in "${ips[@]}"; do
         nohup $python3 -u worker.py --local_ip $ip > /home/cchen/yfliu/ares/logs/$ip.log 2>&1 &
     "
 done
+sleep 1
+for ip in "${ips[@]}"; do
+    nc -zv $ip 4242
+done

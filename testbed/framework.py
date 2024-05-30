@@ -49,11 +49,16 @@ def save_job_state(job_name, content: dict):
         os.rename(job_state_path + ".tmp", job_state_path)  # atomic write
 
 
-def is_sync_step(iterations, acc_step, trainer):
-    return (iterations + 1) % acc_step == 0 or iterations == len(trainer.val_loader) - 1
+def is_sync_step(iterations, acc_step):
+    return (iterations + 1) % acc_step == 0
+
+
+def is_last_step(iterations, loader):
+    return iterations == len(loader) - 1
 
 
 def main(args):
+    start = time.time()
     timer_1 = time.time()
     dist.init_process_group(backend=args.backend,
                             init_method=f"tcp://{args.master_address}:{args.master_port}",
@@ -76,7 +81,8 @@ def main(args):
           f"global_bsz = {args.acc_bsz * args.acc_step * args.world_size}")
 
     # 2. train loop
-    performance_metric = Statistics(["batch", "sync", "gpu", "data", "other"], args.device, acc_steps=args.acc_step)
+    performance_metric = Statistics(["batch", "sync", "gpu", "data", "other"],
+                                    args.device, acc_steps=args.acc_step)
     # DLT jobs' training progress(e.g. epoch, iteration) is the only thing that Ares needs to track.
     # Other functions like gradient accumulation, model saving, graceful exit, etc. are application-specific.
     job_state = load_job_state(args.job_name)
@@ -106,7 +112,7 @@ def main(args):
             data_time = time.time() - timer_2
             timer_2 = time.time()
             # 2.1.2 Multiple gradient accumulations constitute a complete gradient update
-            if not is_sync_step(i, args.acc_step, trainer):
+            if not is_sync_step(i, args.acc_step) and not is_last_step(i, trainer.train_loader):
                 with trainer.model.no_sync():
                     trainer.train_acc_step(i, batch)
             else:
@@ -117,25 +123,25 @@ def main(args):
             torch.cuda.synchronize()
             gpu_time = time.time() - timer_2
             timer_2 = time.time()
-            performance_metric.accumulate_in_batch([data_time + gpu_time + other_time, trainer.model.get_sync_time(),
+            performance_metric.accumulate_in_batch([data_time + gpu_time + other_time,
+                                                    trainer.model.get_sync_time(),
                                                     gpu_time, data_time, other_time])
 
             # 2.1.3 print training info
-            if is_sync_step(i, args.acc_step, trainer):
-                trainer.train_metric.update_local()
-                performance_metric.update_local()
+            if is_sync_step(i, args.acc_step) or is_last_step(i, trainer.train_loader):
+                trainer.train_metric.update_global()
+                if not is_last_step(i, trainer.train_loader):  # some app may use drop_last=False
+                    performance_metric.update_global()
                 # 2.1.1.1 print training info
                 # ignore the first batch's performance metric
-                if (((i + 1) % (args.acc_step * args.print_freq) == 0 or (i + 1) == len(trainer.train_loader))
+                if (((i + 1) % (args.acc_step * args.print_freq) == 0 or is_last_step(i, trainer.train_loader))
                         and not first_batch):
-                    trainer.train_metric.synchronize()
-                    performance_metric.synchronize()
                     print(f'[Epoch {epoch}][{((i / len(trainer.train_loader)) * 100):.2f}%]:'
                           f'{performance_metric}{trainer.train_metric}')
                     if args.profile:
                         dist.barrier()
                         exit(0)
-                if first_batch:
+                if first_batch or is_last_step(i, trainer.train_loader):
                     performance_metric.reset()
                     first_batch = False
 
@@ -152,23 +158,22 @@ def main(args):
             other_time = time.time() - timer_2
             timer_2 = time.time()
 
+        trainer.scheduler.step()
+        trainer.save_checkpoint(epoch)
+
         # 2.2 validate for one epoch
         trainer.model.eval()
         with torch.no_grad():
             for i, batch in enumerate(trainer.val_loader):
                 trainer.val_acc_step(i, batch)
 
-                if is_sync_step(i, args.acc_step, trainer):
-                    trainer.val_metric.update_local()
+                if is_sync_step(i, args.acc_step) or is_last_step(i, trainer.val_loader):
+                    trainer.val_metric.update_global()
 
                     dist.barrier()
                     if get_signal_received():
                         print("exit at validation")
                         exit(143)
-
-        trainer.val_metric.synchronize()
-        trainer.scheduler.step()
-        trainer.save_checkpoint(epoch)
 
         print(f'Finish Epoch {epoch}({time.time() - timer_1:.2f}s): val_metric {trainer.val_metric}')
 
@@ -183,22 +188,21 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--job_name', type=str, default='imagenet-11')
+    parser.add_argument('--job_name', type=str, default='deepspeech2-11')
     parser.add_argument('--master_address', type=str, default='10.0.0.24')
     parser.add_argument('--master_port', type=str, default='17001')
     parser.add_argument('--world_size', type=int, default=1)
     parser.add_argument('--global_rank', type=int, default=0)
     parser.add_argument('--device', type=int, default=0)
-    parser.add_argument('--acc_bsz', type=int, default=75)
+    parser.add_argument('--acc_bsz', type=int, default=80)
     parser.add_argument('--acc_step', type=int, default=1)
 
     parser.add_argument('--backend', type=str, default="nccl")
 
-    parser.add_argument('--model_name', type=str, default='imagenet')
+    parser.add_argument('--model_name', type=str, default='deepspeech2')
     parser.add_argument('--max_epoch', type=int, default=20)
 
     parser.add_argument('--print_freq', type=int, default=10)
     parser.add_argument('--profile', action='store_true')
 
-    start = time.time()
     main(parser.parse_args())

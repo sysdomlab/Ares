@@ -81,7 +81,8 @@ class Deepspeech2Trainer(Trainer):
         # todo train_manifest 中使用的是 /datasets/voxforge，我们的路径是 /home/cchen/yfliu/ares/data/voxforge
         train_set = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=self.train_manifest, labels=labels,
                                        normalize=True, speed_volume_perturb=self.speed_volume_perturb,
-                                       spec_augment=self.spec_augment, samples=4074)
+                                       spec_augment=self.spec_augment,
+                                       samples=4074 if not self.args.profile else None)
         # according to the length of voxforge_cmu_us_american_train_manifest_part1.csv
         train_sampler = DistributedSampler(train_set, shuffle=True)
         train_sampler.set_epoch(self.start_epoch)
@@ -89,7 +90,8 @@ class Deepspeech2Trainer(Trainer):
                                        sampler=train_sampler, pin_memory=True)
 
         val_set = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=self.val_manifest, labels=labels,
-                                     normalize=True, speed_volume_perturb=False, spec_augment=False, samples=452)
+                                     normalize=True, speed_volume_perturb=False, spec_augment=False,
+                                     samples=452 if not self.args.profile else None)
         # according to the length of voxforge_cmu_us_american_train_manifest_part2.csv
         val_sampler = DistributedSampler(val_set, shuffle=False, drop_last=True)
         val_sampler.set_epoch(self.start_epoch)

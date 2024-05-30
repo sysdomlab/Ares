@@ -42,44 +42,46 @@ def get_signal_received():
 
 
 class Statistics:
-    def __init__(self, metrics: List[str], device, acc_steps):
+    def __init__(self, metrics_names: List[str], device, acc_steps):
+        self.metric_names = metrics_names
         self.device = device
+        self.global_value = torch.tensor([0] * len(metrics_names), dtype=torch.float64, device=device)
         self.iteration = 0
-        self.metric_names = metrics
-        self.metric_values = torch.tensor([0] * len(metrics), dtype=torch.float64, device=device)
-        self.metric_batch = torch.tensor([0] * len(metrics), dtype=torch.float64, device=device)
+        self.local_value = torch.tensor([0] * len(metrics_names), dtype=torch.float64, device=device)
         self.acc_num = 0
         self.acc_steps = acc_steps
-        self.metric_current = self.metric_batch.clone()
+        self.current_batch_value = self.local_value.clone()
 
     def accumulate_in_batch(self, values: List[float]):
-        self.metric_batch += torch.tensor(values, dtype=torch.float64, device=self.device)
+        self.local_value += torch.tensor(values, dtype=torch.float64, device=self.device)
         self.acc_num += 1
 
-    def update_local(self):
+    def update_global(self):
         if self.acc_num < self.acc_steps:
-            self.metric_batch = self.metric_batch / self.acc_num * self.acc_steps
+            print("warn: help to update local value")
+            self.local_value = self.local_value / self.acc_num * self.acc_steps
         self.acc_num = 0
-        self.metric_values = (self.metric_values * self.iteration + self.metric_batch) / (self.iteration + 1)
-        self.metric_current = self.metric_batch.clone()
-        self.metric_batch.zero_()
-        self.iteration += 1
 
-    def synchronize(self):
         dist.barrier()
-        dist.all_reduce(self.metric_values, op=dist.ReduceOp.SUM)
-        self.metric_values /= dist.get_world_size()
+        dist.all_reduce(self.local_value, op=dist.ReduceOp.SUM)
+        self.local_value /= dist.get_world_size()
+        # dist.all_reduce(self.local_value, op=dist.ReduceOp.MAX)
+
+        self.global_value = (self.global_value * self.iteration + self.local_value) / (self.iteration + 1)
+        self.iteration += 1
+        self.current_batch_value = self.local_value.clone()
+        self.local_value.zero_()
 
     def get_data(self):
         return {name: (value1, value2) for name, value1, value2
-                in zip(self.metric_names, self.metric_values.tolist(), self.metric_current.tolist())}
+                in zip(self.metric_names, self.global_value.tolist(), self.current_batch_value.tolist())}
 
     def reset(self):
         self.iteration = 0
-        self.metric_values.zero_()
-        self.metric_batch.zero_()
+        self.global_value.zero_()
+        self.local_value.zero_()
         self.acc_num = 0
-        self.metric_current.zero_()
+        self.current_batch_value.zero_()
 
     def __str__(self):
         return '\t' + '\t'.join([f'{name}={value[1]:.4f}({value[0]:.4f})' for name, value in self.get_data().items()])

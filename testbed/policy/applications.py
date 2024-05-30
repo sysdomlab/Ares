@@ -240,7 +240,7 @@ class Application(object):
         else:
             # Interpolate between num_nodes, num_replicas, and local_bsz.
             df = self.placements.groupby(xs)[xs + ys].mean()
-            df = df.append(self.scalability, ignore_index=True)
+            df = df.append(self.scalability[xs + ys], ignore_index=True)
             num_nodes, num_replicas = len(placement), sum(placement)
             # print(f">>> num_nodes: {num_nodes}, num_replicas: {num_replicas}")
             num_nodes = min(num_nodes, 16)
@@ -251,12 +251,13 @@ class Application(object):
         return ret
 
 
-TRACES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "traces/g4dn12xlarge")
+performance_profiling = "2080ti"  # "2080ti"  # g4dn12xlarge
+TRACES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), f"traces/{performance_profiling}")
 APPLICATIONS = {
     "bert": Application(os.path.join(TRACES_DIR, "bert"), max_epochs=2),
     "cifar10": Application(os.path.join(TRACES_DIR, "cifar10"), max_epochs=100),
     "ncf": Application(os.path.join(TRACES_DIR, "ncf"), max_epochs=10),
-    "imagenet": Application(os.path.join(TRACES_DIR, "imagenet"), max_epochs=45, max_local_bsz=75),
+    "imagenet": Application(os.path.join(TRACES_DIR, "imagenet"), max_epochs=90, max_local_bsz=75),
     "deepspeech2": Application(os.path.join(TRACES_DIR, "deepspeech2"), max_epochs=80),
     "yolov3": Application(os.path.join(TRACES_DIR, "yolov3"), max_epochs=50, max_local_bsz=12),
 }

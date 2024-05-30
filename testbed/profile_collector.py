@@ -8,11 +8,14 @@ from profiler import get_placement_configs, ckp_path
 
 def get_time_from_log(file_path):
     assert os.path.exists(file_path), f"Cannot find file {file_path}"
-    pattern = r'batch=(\d+\.\d+)\(\d+\.\d+\)\s+sync=(\d+\.\d+)\(\d+\.\d+\)\s+gpu=(\d+\.\d+)\(\d+\.\d+\)\s+data=(\d+\.\d+)\(\d+\.\d+\)\s+other=(\d+\.\d+)\(\d+\.\d+\)'
+    pattern = r'batch=.*?\((.*?)\).*?sync=.*?\((.*?)\).*?gpu=.*?\((.*?)\).*?data=.*?\((.*?)\).*?other=.*?\((.*?)\)'
     with open(file_path, "r") as f:
         content = [i for i in f.readlines() if "[Epoch 0]" in i][0]
         matches = re.search(pattern, content)
         assert matches is not None, f"Cannot find profiling results in {file_path}: {content}"
+        # print(content)
+        # print(matches.groups())
+        # input()
         batch_time, sync_time, gpu_time, data_time, other_time = matches.groups()
         print(f"{file_path}: batch_time = {batch_time}, sync_time = {sync_time}, "
               f"gpu_time = {gpu_time}, data_time = {data_time}, other_time = {other_time}")
@@ -25,10 +28,10 @@ def get_time_from_log(file_path):
         }
 
 
-def save_to_csv(data, file_name):
+def save_to_csv(head, data, file_name):
     with open(file_name, mode='w', newline='') as file:
         writer = csv.writer(file)
-        writer.writerow(["placement", "local_bsz", "step_time", "sync_time", "gpu_time", "data_time", "other_time"])
+        writer.writerow(head)
         writer.writerows(data)
 
 
@@ -36,7 +39,7 @@ if __name__ == '__main__':
     scalability = False
 
     if not scalability:
-        # profile placement.csv
+        # profile placements.csv
         for app_name, app in APPLICATIONS.items():
             csv_data = []
             configs = get_placement_configs(app, scalability=False)
@@ -53,10 +56,11 @@ if __name__ == '__main__':
                                  res["gpu_time"], res["data_time"], res["other_time"]])
 
             # Save data to CSV
-            out_path = f"traces/2080ti/{app_name}/placement.csv"
+            out_path = f"traces/2080ti/{app_name}/placements.csv"
             if not os.path.exists(os.path.dirname(out_path)):
                 os.makedirs(os.path.dirname(out_path))
-            save_to_csv(csv_data, out_path)
+            head = ["placement", "local_bsz", "step_time", "sync_time", "gpu_time", "data_time", "other_time"]
+            save_to_csv(head, csv_data, out_path)
     else:
         # profile scalability.csv
         for app_name, app in APPLICATIONS.items():
@@ -80,4 +84,6 @@ if __name__ == '__main__':
             out_path = f"traces/2080ti/{app_name}/scalability.csv"
             if not os.path.exists(os.path.dirname(out_path)):
                 os.makedirs(os.path.dirname(out_path))
-            save_to_csv(csv_data, out_path)
+            head = ["num_nodes", "num_replicas", "local_bsz", "step_time", "sync_time",
+                    "gpu_time", "data_time", "other_time"]
+            save_to_csv(head, csv_data, out_path)
