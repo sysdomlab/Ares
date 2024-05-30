@@ -252,14 +252,6 @@ class Application(object):
 
 
 TRACES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "traces/g4dn12xlarge")
-# APPLICATIONS = {
-#     "bert": Application(os.path.join(TRACES_DIR, "bert"), max_epochs=2),
-#     "cifar10": Application(os.path.join(TRACES_DIR, "cifar10"), max_epochs=100),
-#     "ncf": Application(os.path.join(TRACES_DIR, "ncf"), max_epochs=10),
-#     "imagenet": Application(os.path.join(TRACES_DIR, "imagenet"), max_epochs=90, max_local_bsz=100),
-#     "deepspeech2": Application(os.path.join(TRACES_DIR, "deepspeech2"), max_epochs=80),
-#     "yolov3": Application(os.path.join(TRACES_DIR, "yolov3"), max_epochs=50),
-# }
 APPLICATIONS = {
     "bert": Application(os.path.join(TRACES_DIR, "bert"), max_epochs=2),
     "cifar10": Application(os.path.join(TRACES_DIR, "cifar10"), max_epochs=100),
