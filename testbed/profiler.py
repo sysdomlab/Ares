@@ -108,6 +108,7 @@ def performance_profiling(available_node, configs):
             proc_name = f"{job_name}:{rank}"
             time_out, start_time = 120, time.time()
             while True:
+                time.sleep(1)
                 res = connects[node_ip].stats_proc(proc_name)
                 print(f"connects[{node_ip}].stats_proc({proc_name})")
                 if res.get("returncode", None) is not None:
@@ -115,7 +116,6 @@ def performance_profiling(available_node, configs):
                     break
                 if time.time() - start_time > time_out:
                     raise TimeoutError(f"Process {proc_name}({node_ip}:{gpu_id}) terminated due to timeout")
-                time.sleep(1)
 
 
 if __name__ == '__main__':
@@ -128,7 +128,7 @@ if __name__ == '__main__':
 
     if not args.scalability:
         # profile placements.csv
-        available_node = ("10.0.0.11", "10.0.0.13", "10.0.0.15", "10.0.0.16")
+        available_node = ("10.0.0.23", "10.0.0.24", "10.0.0.25", "10.0.0.26")
         all_configs = []
         for app_name, app in APPLICATIONS.items():
             configs = get_placement_configs(app, scalability=False)
@@ -143,9 +143,8 @@ if __name__ == '__main__':
         # subprocess.Popen(f"mv /home/cchen/yfliu/ares/checkpoints/profile-* {ckp_path}", shell=True)
     else:
         # profile scalability.csv
-        available_node = ("10.0.0.17",
-                          "10.0.0.20", "10.0.0.21", "10.0.0.22",
-                          "10.0.0.23", "10.0.0.24", "10.0.0.25", "10.0.0.26")
+        available_node = ("10.0.0.11", "10.0.0.13", "10.0.0.15", "10.0.0.16", "10.0.0.17",
+                          "10.0.0.20", "10.0.0.21", "10.0.0.22")
         all_configs = []
         for app_name, app in APPLICATIONS.items():
             configs = get_placement_configs(app, scalability=True)

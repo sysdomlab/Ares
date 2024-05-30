@@ -42,7 +42,7 @@ def get_signal_received():
 
 
 class Statistics:
-    def __init__(self, metrics_names: List[str], device, acc_steps):
+    def __init__(self, metrics_names: List[str], device, acc_steps, full_float=False):
         self.metric_names = metrics_names
         self.device = device
         self.global_value = torch.tensor([0] * len(metrics_names), dtype=torch.float64, device=device)
@@ -51,6 +51,7 @@ class Statistics:
         self.acc_num = 0
         self.acc_steps = acc_steps
         self.current_batch_value = self.local_value.clone()
+        self.full_float = full_float
 
     def accumulate_in_batch(self, values: List[float]):
         self.local_value += torch.tensor(values, dtype=torch.float64, device=self.device)
@@ -84,6 +85,8 @@ class Statistics:
         self.current_batch_value.zero_()
 
     def __str__(self):
+        if self.full_float:
+            return '\t' + '\t'.join([f'{name}={value[1]}({value[0]})' for name, value in self.get_data().items()])
         return '\t' + '\t'.join([f'{name}={value[1]:.4f}({value[0]:.4f})' for name, value in self.get_data().items()])
 
 

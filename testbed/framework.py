@@ -82,7 +82,7 @@ def main(args):
 
     # 2. train loop
     performance_metric = Statistics(["batch", "sync", "gpu", "data", "other"],
-                                    args.device, acc_steps=args.acc_step)
+                                    args.device, acc_steps=args.acc_step, full_float=args.profile)
     # DLT jobs' training progress(e.g. epoch, iteration) is the only thing that Ares needs to track.
     # Other functions like gradient accumulation, model saving, graceful exit, etc. are application-specific.
     job_state = load_job_state(args.job_name)
