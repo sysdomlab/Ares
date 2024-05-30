@@ -309,13 +309,6 @@ class Cluster(object):
                 json.dump(record, f)
                 f.write("\n")
 
-    def get_jcts(self):
-        return {
-            val["name"]: val["completion_time"] - val["submission_time"]
-            for val in self.logs[-1]["submitted_jobs"]
-            if val["completion_time"] is not None
-        }
-
     def optimize(self, job_infos, node_infos, prev_allocations):
         # 算法选择
         new_allocations, _ = self.policy.optimize(job_infos, node_infos, prev_allocations)
@@ -429,12 +422,12 @@ class Cluster(object):
         while not self.all_complete():
             self.step()
             self.print_logs()
-        return self.logs, self.get_jcts()
 
     def print_logs(self):
-        self.logs.append({
+        entry = {
             "timestamp": self.current_time,
             "num_nodes": self.num_nodes,
+            "used_gpus": sum(map(len, self.running_allocations.values())),
             "allocations": self.running_allocations,
             "submitted_jobs": [
                 {
@@ -451,22 +444,27 @@ class Cluster(object):
                     "grad_params": job.grad_params,
                     "attained_service": job.attained_service,
                 }
-                for job in self.jobs.values() if job.submission_time <= self.current_time
+                for job in self.jobs.values()
+                if job.submission_time <= self.current_time
             ],
-        })
+            "jct": {
+                job.name: job.completion_time - job.submission_time
+                for job in self.jobs.values() if job.completion_time is not None
+            },
+        }
+        entry["avg_jct"] = sum(entry['jct'].values()) / len(entry['jct']) if entry['jct'] else 0
+        self.logs.append(entry)
         print(f"---------------- SIMULATOR TIME: {self.current_time} ----------------")
         print("Active jobs:")
-        for val in self.logs[-1]["submitted_jobs"]:
+        for val in entry["submitted_jobs"]:
             if val["submission_time"] <= self.current_time and val["completion_time"] is None:
-                print(f"    {val['name']}:\t[epoch {val['epoch']}]\t[restarts {val['num_restarts']}]\t"
+                print(f"\t{val['name']}:\t[epoch {val['epoch']}]\t[restarts {val['num_restarts']}]\t"
                       f"[batch size {val['batch_size']}]\t[placement {val['placement']}]")
-        print(f"allocations: {self.logs[-1]['allocations']}")
-        used_gpus = sum(map(len, self.running_allocations.values()))
-        print("GPU utilization: {}".format(used_gpus))
-        jct_dict = self.get_jcts()
-        print(f"Completed jobs [{len(jct_dict)}]:")
-        print(jct_dict)
-        print("Average JCT:", sum(jct_dict.values()) / len(jct_dict) if jct_dict else 0)
+        print(f"allocations: {entry['allocations']}")
+        print(f"GPU utilization: {entry['used_gpus']}")
+        print(f"Completed jobs [{len(entry['jct'])}]:")
+        print(entry['jct'])
+        print("Average JCT:", entry["avg_jct"])
 
 
 if __name__ == "__main__":
@@ -476,7 +474,7 @@ if __name__ == "__main__":
                         default="./workload/workloads-1.0/workload-1.csv")
                         # default="./workload/workloads-4h-40j/workload-1.csv")
                         # default="./workload/workload-debug.csv")
-    parser.add_argument("--policy", type=str, default="cfq",
+    parser.add_argument("--policy", type=str, default="optimus",
                         choices=get_all_policies())
     parser.add_argument("--nodes", type=str, default=" ".join([f"10.0.0.{i}" for i in range(19, 19 + 16)]))
     parser.add_argument("--interval", type=int, default=60,
