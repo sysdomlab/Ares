@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
         print(f"{app_name}:")
         for num_replicas in range(1, 1 + 32):  # [1, 2, 4, 8, 16, 32]:  # range(1, 1 + 32):
-            global_bsz = app.max_batch_size
+            global_bsz = app.max_batch_size / 4
 
             (step_times[num_replicas], sync_times[num_replicas]) = predict_step_time(app, num_replicas, global_bsz)
 
@@ -55,15 +55,15 @@ if __name__ == '__main__':
         efficiency = all_efficiency[app_name]
 
         # 数据存储列表
-        num_replicas_list, efficiency_values = [], []
-        for num_replicas in range(1, 1 + 32):  # [1, 2, 4, 8, 16, 32]:  # range(1, 1 + 32):
+        num_replicas_list, values = [], []
+        for num_replicas in [1, 2, 4, 8, 16, 32]:  # [1, 2, 4, 8, 16, 32]:  # range(1, 1 + 32):
             # 将数据添加到列表中
             num_replicas_list.append(num_replicas)
-            efficiency_values.append(efficiency[num_replicas])
+            values.append(efficiency[num_replicas])
 
         # 绘制折线图
         num_replicas_log2 = np.log2(num_replicas_list)
-        plt.plot(num_replicas_log2, efficiency_values, label=app_name)
+        plt.plot(num_replicas_log2, values, label=app_name)
 
         power_of_2 = [2 ** i for i in range(int(math.log2(max(num_replicas_list))) + 1)]
         power_of_2_log2 = np.log2(power_of_2)
@@ -76,31 +76,30 @@ if __name__ == '__main__':
     plt.show()
 
     # speedup
-    # plt.style.use('ggplot')
-    # for app_name, app in APPLICATIONS.items():
-    #     step_times, sync_times, efficiency, speedup \
-    #         = all_step_times[app_name], all_sync_times[app_name], all_efficiency[app_name], all_speedup[app_name]
-    #
-    #     # 数据存储列表
-    #     num_replicas_list = []
-    #     efficiency_values = []
-    #     print(f"{app_name}:")
-    #     for num_replicas in range(1, 1 + 32):  # [1, 2, 4, 8, 16, 32]:  # range(1, 1 + 32):
-    #         # 将数据添加到列表中
-    #         num_replicas_list.append(num_replicas)
-    #         efficiency_values.append(efficiency[num_replicas])
-    #
-    #     # 绘制折线图
-    #     num_replicas_log2 = np.log2(num_replicas_list)
-    #     plt.plot(num_replicas_log2, efficiency_values, label=app_name)
-    #
-    #     power_of_2 = [2 ** i for i in range(int(math.log2(max(num_replicas_list))) + 1)]
-    #     power_of_2_log2 = np.log2(power_of_2)
-    #     plt.xticks(power_of_2_log2, power_of_2)
-    #
-    # plt.title("Iso-Efficiency")
-    # plt.xlabel("Num of GPUs")
-    # plt.ylabel("Normalized Throughput")
-    # plt.legend()
-    # plt.show()
+    plt.style.use('ggplot')
+    for app_name, app in APPLICATIONS.items():
+        speedup = all_speedup[app_name]
+
+        # 数据存储列表
+        num_replicas_list, values = [0], [0]
+        for num_replicas in [1, 2, 4, 8, 16, 32]:  # [1, 2, 4, 8, 16, 32]:  # range(1, 1 + 32):
+            # 将数据添加到列表中
+            num_replicas_list.append(num_replicas)
+            values.append(speedup[num_replicas])
+
+        # 绘制折线图
+        # num_replicas_log2 = np.log2(num_replicas_list)
+        plt.plot(num_replicas_list, values, label=app_name)
+
+        # power_of_2 = [2 ** i for i in range(int(math.log2(max(num_replicas_list))) + 1)]
+        # power_of_2_log2 = np.log2(power_of_2)
+        # plt.xticks(power_of_2_log2, power_of_2)
+        xticks = list(range(0, 33, 4))
+        plt.xticks(xticks, xticks)
+
+    plt.title("Speedup")
+    plt.xlabel("Num of GPUs")
+    plt.ylabel("Normalized Throughput")
+    plt.legend()
+    plt.show()
 
