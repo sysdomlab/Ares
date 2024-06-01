@@ -1,6 +1,7 @@
 import argparse
 import collections
 import json
+import os
 import time
 
 import math
@@ -21,18 +22,24 @@ from policy.optimus import OptimusPolicy
 from policy.tiresias import TiresiasPolicy
 from policy.fifo import FIFOPolicy
 from policy.athena import AthenaPolicy
-from policy.cfq import CFQPolicy
+from policy.ares import ARESPolicy
 from policy.sjf import SJFPolicy
+
+np.random.seed(0)
+
+
+def random_scale():
+    return (np.random.randint(2) + 1) / 2
 
 
 def get_all_policies():
-    return ["tiresias", "optimus", "pollux", "fifo", "sjf", "athena", "cfq"]
+    return ["tiresias", "optimus", "pollux", "fifo", "sjf", "athena", "ares"]
 
 
 class Job(object):
     def __init__(self, name, application, submission_time,
                  target_num_replicas=None, target_batch_size=None):
-        self.name = ("default", name)
+        self.name = name
         self.application = application
         self.submission_time = submission_time
         self.target_num_replicas = target_num_replicas
@@ -110,7 +117,7 @@ class Job(object):
 
         self.attained_service += elapse_time * sum(self.placement)
         # 查询是否结束
-        job_state = load_job_state(self.name[1])  # 获取进度
+        job_state = load_job_state(self.name)  # 获取进度
         self.epoch, completed = int(job_state["epoch"]), job_state["completed"]
         placement = tuple(filter(None, self.placement))
         num_nodes, num_replicas = len(placement), sum(placement)
@@ -145,7 +152,7 @@ class Job(object):
 
 
 class Cluster(object):
-    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60):
+    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None):
         assert 1 <= num_gpus <= 4
         self.nodes = nodes.split(" ")
         self.num_nodes = len(self.nodes)
@@ -159,11 +166,12 @@ class Cluster(object):
                 name=row.name,
                 application=APPLICATIONS[row.application],
                 submission_time=row.time,
-                target_num_replicas=None if policy_name in [] else row.num_replicas,
-                target_batch_size=None if policy_name in [] else APPLICATIONS[row.application].max_batch_size,
+                target_num_replicas=row.num_replicas,
+                target_batch_size=APPLICATIONS[row.application].max_batch_size * random_scale(),
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
         self.policy = self.get_policy(policy_name)
+        self.out_put = out_put
 
         self.running_allocations = {}
         # self.running_allocations[job_name] = [(node_ip, gpu_id)]
@@ -197,8 +205,8 @@ class Cluster(object):
             return SJFPolicy()
         elif policy_name == "athena":
             return AthenaPolicy()
-        elif policy_name == "cfq":
-            return CFQPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes)
+        elif policy_name == "ares":
+            return ARESPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes)
 
     def get_job_infos(self):
         job_infos = {}
@@ -216,8 +224,8 @@ class Cluster(object):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, AthenaPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
-                elif isinstance(self.policy, CFQPolicy):
-                    job_infos[job.name] = self.get_optimus_job_info(job)
+                elif isinstance(self.policy, ARESPolicy):
+                    job_infos[job.name] = self.get_ares_job_info(job)
         return job_infos
 
     def get_node_infos(self):
@@ -233,7 +241,7 @@ class Cluster(object):
             creation_timestamp=job.submission_time,
             attained_service=job.attained_service,
             min_replicas=0,
-            max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
+            max_replicas=min(max(2 * job.max_profiled_replicas, 1), job.application.max_num_replicas,
                              job.application.max_batch_size // job.application.min_local_bsz),
         )
         job_info.num_restarts = job.num_restarts or 0
@@ -247,9 +255,21 @@ class Cluster(object):
             creation_timestamp=job.submission_time,
             attained_service=job.attained_service,
             min_replicas=0,
-            max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
-                             job.application.max_batch_size // job.application.min_local_bsz),
-            # max_replicas=(job.target_batch_size // job.application.min_local_bsz),
+            max_replicas=job.target_batch_size // job.application.min_local_bsz,
+        )
+        job_info.epoch = job.epoch
+        job_info.application = job.application
+        job_info.target_batch_size = job.target_batch_size
+        return job_info
+
+    def get_ares_job_info(self, job):
+        job_info = JobInfo(
+            resources={"nvidia.com/gpu": 1},
+            speedup_fn=job.get_speedup_fn(),
+            creation_timestamp=job.submission_time,
+            attained_service=job.attained_service,
+            min_replicas=0,
+            max_replicas=job.application.max_num_replicas
         )
         job_info.epoch = job.epoch
         job_info.application = job.application
@@ -268,12 +288,6 @@ class Cluster(object):
 
     def all_complete(self):
         return all(job.completion_time is not None for job in self.jobs.values())
-
-    def output_logs(self, path):
-        with open(path, "w") as f:
-            for record in self.logs:
-                json.dump(record, f)
-                f.write("\n")
 
     def optimize(self, job_infos, node_infos, prev_allocations):
         # 算法选择
@@ -307,7 +321,7 @@ class Cluster(object):
         for k, v in self.running_allocations.items():
             if k not in job_infos:
                 for rank, (node_ip, gpu_id) in enumerate(v):
-                    proc_name = f"{k[1]}:{rank}"
+                    proc_name = f"{k}:{rank}"
                     finished_proc.append((proc_name, (node_ip, gpu_id)))
                     res = self.connects[node_ip].stats_proc(proc_name)
                     print(f"self.connects[{node_ip}].stats_proc({proc_name}): {res}")
@@ -317,10 +331,10 @@ class Cluster(object):
                         self.connects[node_ip].kill_proc(proc_name, force=True)
                     if res.get("returncode") != 0:
                         print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) exited unexpectedly")
-                    self.gpu_alloc[(node_ip, gpu_id)].remove(f"{k[1]}:{rank}")
+                    self.gpu_alloc[(node_ip, gpu_id)].remove(f"{k}:{rank}")
             else:
                 for rank, (node_ip, gpu_id) in enumerate(v):
-                    proc_name = f"{k[1]}:{rank}"
+                    proc_name = f"{k}:{rank}"
                     res = self.connects[node_ip].stats_proc(proc_name)
                     print(f"self.connects[{node_ip}].stats_proc({proc_name}): {res}")
                     if res is not None and res.get("returncode") not in [0, None]:
@@ -338,7 +352,7 @@ class Cluster(object):
         kill_proc = []
         for job_name in kill_job:
             for rank, (node_ip, gpu_id) in enumerate(self.running_allocations[job_name]):
-                proc_name = f"{job_name[1]}:{rank}"
+                proc_name = f"{job_name}:{rank}"
                 print(f"self.connects[{node_ip}].kill_proc({proc_name})")
                 self.connects[node_ip].kill_proc(proc_name)  # 非阻塞发送停止命令
                 kill_proc.append((proc_name, (node_ip, gpu_id)))
@@ -369,13 +383,13 @@ class Cluster(object):
             for rank, node_ip in enumerate(new_allocations[job_name]):
                 gpu_id = self.get_free_gpu(node_ip)
                 self.running_allocations[job_name].append((node_ip, gpu_id))
-                proc_name = f"{job_name[1]}:{rank}"
+                proc_name = f"{job_name}:{rank}"
                 start_proc.append((proc_name, (node_ip, gpu_id)))
                 self.gpu_alloc[(node_ip, gpu_id)].append(proc_name)  # 进程注册到gpu_alloc
                 job = self.jobs[job_name]
-                cmd = get_cmd(job_name=job_name[1], allocation=new_allocations[job_name], rank=rank,
+                cmd = get_cmd(job_name=job_name, allocation=new_allocations[job_name], rank=rank,
                               acc_bsz=job.atomic_bsz, acc_step=job.accum_steps + 1)
-                out_file = (f"{get_checkpoint_path(job_name[1], return_dir=True)}/"
+                out_file = (f"{get_checkpoint_path(job_name, return_dir=True)}/"
                             f"restart_{job.num_restarts}_rank_{rank}.log")
                 print(f"self.connects[{node_ip}].run_proc({proc_name}, {cmd}, {gpu_id}, {out_file})")
                 self.connects[node_ip].run_proc(proc_name, cmd, gpu_id, out_file)  # 非阻塞发送启动命令
@@ -388,7 +402,14 @@ class Cluster(object):
         while not self.all_complete():
             self.step()
             self.print_logs()
-            time.sleep(self.interval)
+        if self.out_put is not None:
+            self.output_logs()
+
+    def output_logs(self):
+        if not os.path.exists(os.path.dirname(self.out_put)):
+            os.makedirs(os.path.dirname(self.out_put))
+        with open(self.out_put, "w") as f:
+            json.dump(self.logs, f)
 
     def print_logs(self):
         entry = {
@@ -424,7 +445,7 @@ class Cluster(object):
         print(f"---------------- SIMULATOR TIME: {self.current_time} ----------------")
         print("Active jobs:")
         for val in entry["submitted_jobs"]:
-            if val["submission_time"] <= self.current_time and val["completion_time"] is None:
+            if val["completion_time"] is None:
                 print(f"\t{val['name']}:\t[epoch {val['epoch']}]\t[restarts {val['num_restarts']}]\t"
                       f"[batch size {val['batch_size']}]\t[placement {val['placement']}]")
         print(f"allocations: {entry['allocations']}")
@@ -437,20 +458,19 @@ class Cluster(object):
 if __name__ == "__main__":
     # nohup python3 -u scheduler.py > ./scheduler.log 2>&1 &
     parser = argparse.ArgumentParser()
-    parser.add_argument("--workload", type=str, help="path to workload csv",
-                        default="./workload/workloads-4h-40j/workload-1.csv")
-    # default="./workload/workload-debug.csv")
-    parser.add_argument("--policy", type=str, default="optimus",
-                        choices=get_all_policies())
+    parser.add_argument("--workload", type=str, default="./workload/workloads-4h-40j/workload-3.csv",
+                        help="path to workload csv")
+    parser.add_argument("--policy", type=str, default="ares", choices=get_all_policies(),
+                        help="scheduler policy")
     parser.add_argument("--nodes", type=str,
                         default=" ".join(["10.0.0.22", "10.0.0.23", "10.0.0.24", "10.0.0.26"]))
-    # parser.add_argument("--nodes", type=str, default=" ".join([f"10.0.0.{i}" for i in range(23, 23 + 4)]))
-    # parser.add_argument("--nodes", type=str, default=" ".join([f"10.0.0.{i}" for i in range(19, 19 + 16)]))
     parser.add_argument("--interval", type=int, default=60,
                         help="scheduling interval in seconds")
     parser.add_argument("--num-gpus", type=int, default=4,
                         help="number of GPUs per node")
+    parser.add_argument("--output", type=str, default=None,
+                        help="output all logs to a json file")
     args = parser.parse_args()
 
-    cluster = Cluster(args.workload, args.policy, args.nodes, num_gpus=args.num_gpus, interval=args.interval)
+    cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output)
     cluster.run()

@@ -16,13 +16,13 @@ policies = [
     'pollux',
     'optimus',
     'tiresias',
-    'sjf',
-    'fifo',
-    'cfq',
+    # 'sjf',
+    # 'fifo',
+    'ares',
 ]
 exp_name = "0.75_MaxBsz"
 
-python3 = "/home/yfliu/lib/miniconda3/envs/pollux/bin/python3"
+python3 = "/home/cchen/miniconda3/envs/yfliu/bin/python3"
 
 # 构建要执行的命令列表
 commands = []
@@ -34,7 +34,10 @@ for policy in policies:
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
         log_file = f'{log_dir}/{policy}.txt'
-        command = f'{python3} simulator.py --workload {workload_path} --policy {policy} 2>&1 > {log_file}'
+        json_file = f'{log_dir}/{policy}.json'
+        command = (f'{python3} simulator.py'
+                   f' --workload {workload_path} --policy {policy} --output {json_file}'
+                   f' 2>&1 > {log_file}')
         commands.append(command)
 
 print(f'Total commands: {len(commands)}')

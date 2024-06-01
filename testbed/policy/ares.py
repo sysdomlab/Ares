@@ -24,7 +24,7 @@ def predict_step_time(job, num_replicas):
     return step_time + (step_time - sync_time) * accum_steps
 
 
-class CFQPolicy(object):
+class ARESPolicy(object):
     def __init__(self, time_fn, total_gpus):
         self._time_fn = time_fn
         self.gps_sys = GPSSystem(time_fn(), total_gpus)
@@ -59,12 +59,12 @@ class CFQPolicy(object):
             if key not in jobs.keys():
                 continue
             desire_replicas = 0
-            for i, (x, y, _) in enumerate(self.gps_sys.fair_jobs[key]["scale_factor"]):
-                if y >= 0.75:
+            for i, (x, efficiency, speedup, d_speedup) in enumerate(self.gps_sys.fair_jobs[key]["scale_factor"]):
+                if efficiency >= 0.75:
                     desire_replicas = x
                 else:
                     break
-            num_replicas[key] = min(num_gpus, desire_replicas)
+            num_replicas[key] = min(num_gpus, desire_replicas, jobs[key].max_replicas)
             num_gpus -= num_replicas[key]
         print(f">>> num_replicas: {num_replicas}")
         # Add remaining resources
@@ -72,10 +72,12 @@ class CFQPolicy(object):
             if key not in jobs.keys():
                 continue
             desire_replicas = num_replicas[key]
-            for i, (x, y, _) in enumerate(self.gps_sys.fair_jobs[key]["scale_factor"]):
+            for i, (x, efficiency, speedup, d_speedup) in enumerate(self.gps_sys.fair_jobs[key]["scale_factor"]):
                 if x < desire_replicas:
                     continue
-                if y > 0.5:
+                if x > jobs[key].max_replicas:
+                    break
+                if d_speedup > 0:
                     desire_replicas = x
                 else:
                     break
@@ -152,18 +154,22 @@ class GPSSystem:
         # print(f"{key}'s completion_iter: {completion_iter}")
 
         # get throughput model
-        max_replicas = min(job.max_replicas, math.ceil(job.target_batch_size / job.application.max_local_bsz))
-        max_replicas = 64
+        # max_replicas = job.max_replicas
+        max_replicas = job.application.max_num_replicas
+        # print(f"job.max_replicas: {job.max_replicas}, max_replicas: {max_replicas}")
         step_time = {}
-        for i in range(1, 64 + 1):
+        for i in range(1, max_replicas + 1):
             step_time[i] = predict_step_time(job, i)
 
         # get non-linear scale curve
         scale_factor = []
-        for i, x in enumerate([1, 2, 4, 8, 16, 32, 64]):
-            tp1 = 1 / step_time[1]  # iter/s/gpu
-            tpx = 1 / step_time[x] / x  # iter/s/gpu
-            scale_factor.append((x, tpx / tp1, 0.75 ** i))
+        for i, x in enumerate([i for i in [1, 2, 4, 8, 16, 32, 64] if i <= max_replicas]):
+            tp1 = 1 / step_time[1]  # iter/s
+            tpx = 1 / step_time[x]  # iter/s
+            speedup = tpx / tp1
+            efficiency = tpx / tp1 / x
+            d_speedup = speedup - (scale_factor[-1][2] if scale_factor else 0)
+            scale_factor.append([x, efficiency, speedup, d_speedup])
         # print(f">>> scale_factor of {key}: {scale_factor}")
 
         self.fair_jobs[key] = {

@@ -65,6 +65,7 @@ class Application(object):
         assert self.max_batch_size >= self.min_local_bsz
         self.max_epochs = max_epochs or min(map(len, self.validation.values()))
         self.target_metric = target_metric
+        self.max_num_replicas = self.scalability.num_replicas.max()
 
     def _validated_batch_sizes(self, batch_size):
         # Find the lower-bound and upper-bound batch sizes (may be the same).
