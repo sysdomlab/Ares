@@ -3,12 +3,18 @@ from multiprocessing import Pool
 from tqdm import tqdm
 
 workloads = [
-    # 'workloads-1.0/workload-debug.csv',
-] + [
-    f"workloads-{i}/workload-{j}.csv"
-    for i in [
-        "2.0", "1.5", "realistic", "0.5",
-        "1.0",
+    f"{name}/workload-{j}.csv"
+    for name in [
+        # "workloads-2.0",
+        # "workloads-1.5",
+        # "workloads-realistic",
+        # "workloads-1.0",
+        # "workloads-0.5",
+        # "newtrace",
+        # "philly",
+        # "saturn",
+        "workloads-4h-40j",
+        # "workloads-4h-80j",
     ]
     for j in [1, 2, 3, 4, 5, 6, 7, 8]
 ]
