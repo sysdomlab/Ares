@@ -158,7 +158,7 @@ def get_all_jct_from_raw_log(wl_set):
 def get_fair_jct_from_raw_log(wl_set):
     results_data = {}
     for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
-        if "cfq" not in file:
+        if "ares" not in file:
             continue
         workload = file.split("/")[-2].split("-")[-1]
         # print(workload, file)
@@ -341,12 +341,13 @@ def plot_scheduling(res_data, wl_set, wl_set_filter=None, wl_filter=None, algo_f
 
 
 def main():
-    workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
+    # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
+    workload_sets = ["workloads-4h-40j"]
     for workload_set in workload_sets:
         # 1. avg jct
         results_data = get_jct_from_raw_log(workload_set)
         df = pd.DataFrame(results_data)
-        # print(df)
+        print(df)
         # print(get_markdown_table(df))
         plot_grouped_bar(df, workload_set, "Avg_JCT")
 
@@ -386,29 +387,29 @@ def main():
         plot_grouped_bar_with_error_bars(df, workload_set, "FTF")
 
         # 5. visualize scheduling decision
-        results_data = get_scheduling_from_raw_log(workload_set)
-        plot_scheduling(results_data, workload_set,
-                        wl_set_filter=[
-                            "workloads-0.5",
-                            "workloads-1.0",
-                            "workloads-1.5",
-                            "workloads-2.0",
-                            "workloads-realistic",
-                        ],
-                        wl_filter=["1"],
-                        algo_filter=[
-                            "cfq",
-                            "optimus",
-                            "pollux",
-                            "tiresias",
-                            "sjf"
-                        ])
+        # results_data = get_scheduling_from_raw_log(workload_set)
+        # plot_scheduling(results_data, workload_set,
+        #                 wl_set_filter=[
+        #                     "workloads-0.5",
+        #                     "workloads-1.0",
+        #                     "workloads-1.5",
+        #                     "workloads-2.0",
+        #                     "workloads-realistic",
+        #                 ],
+        #                 wl_filter=["1"],
+        #                 algo_filter=[
+        #                     "ares",
+        #                     "optimus",
+        #                     "pollux",
+        #                     "tiresias",
+        #                     "sjf"
+        #                 ])
 
         pass
 
 
 if __name__ == '__main__':
-    os.chdir(f"/home/yfliu/cluster_schedule/Pollux/simulator/simulator_logs/0.75_MaxBsz")
+    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/0.75_MaxBsz")
     main()
     # os.chdir(f"/home/yfliu/cluster_schedule/Pollux/simulator/simulator_logs/0.75_RowBsz")
     # main()

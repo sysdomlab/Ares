@@ -24,7 +24,7 @@ class Deepspeech2Trainer(Trainer):
         self.args = args
         self.start_epoch = 0
         self.data_dir = env.get_dataset_path("deepspeech2")
-        self.checkpoint_path = env.get_checkpoint_path(self.args.job_name)
+        self.checkpoint_path = env.get_checkpoint_path(args.job_name)
         self.device = torch.device(f"cuda:{self.args.device}")
 
         self.lr = 0.008

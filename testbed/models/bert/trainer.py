@@ -49,7 +49,6 @@ class BertTrainer(Trainer):
 
         self.model_type = "bert"
         self.model_name_or_path = f"{self.data_dir}/model/bert-base-uncased"
-        self.output_dir = env.get_checkpoint_path(args.job_name, return_dir=True)  # todo
         self.data_dir = f"{self.data_dir}/data"
         self.version_2_with_negative = False
         self.null_score_diff_threshold = 0.0

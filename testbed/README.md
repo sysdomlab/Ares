@@ -32,7 +32,7 @@ export CUDA_VISIBLE_DEVICES=3 && nohup $python3 framework.py --master_address 10
 # modify testbed/start_workers.sh and testbed/clean_workers.sh to set the machines you have
 bash start_workers.sh  # start the workers
 
-nohup python3 -u scheduler.py --policy pollux --nodes "10.0.0.22 10.0.0.23 10.0.0.24 10.0.0.25" > /home/cchen/yfliu/ares/logs/scheduler.log 2>&1 &
+nohup python3 -u scheduler.py --policy pollux --nodes "10.0.0.22 10.0.0.23 10.0.0.24 10.0.0.25" > ./scheduler.log 2>&1 &
 
 bash clean_workers.sh  # clean the workers
 ```

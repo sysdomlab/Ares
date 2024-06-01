@@ -162,7 +162,7 @@ class Cluster(object):
         self.start_time = time.time()
         self.jobs = collections.OrderedDict()
         for row in pandas.read_csv(workload_name).itertuples():
-            self.jobs[("default", row.name)] = Job(
+            self.jobs[row.name] = Job(
                 name=row.name,
                 application=APPLICATIONS[row.application],
                 submission_time=row.time,
@@ -402,6 +402,7 @@ class Cluster(object):
         while not self.all_complete():
             self.step()
             self.print_logs()
+            time.sleep(self.interval)
         if self.out_put is not None:
             self.output_logs()
 

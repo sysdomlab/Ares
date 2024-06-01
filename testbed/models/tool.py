@@ -27,18 +27,21 @@ def set_random_seed(seed=1234):
     os.environ['PYTHONHASHSEED'] = str(seed)
 
 
-received_signal = False
+received_signal = 0
 
 
 def signal_handler(sig, frame):
     global received_signal
     print('Received signal {}. Setting received_signal flag...'.format(sig))
-    received_signal = True
+    received_signal = 1
 
 
 def get_signal_received():
     global received_signal
-    return received_signal
+    res = torch.tensor(received_signal).to(torch.device('cuda'))
+    dist.barrier()
+    dist.all_reduce(res, op=dist.ReduceOp.MAX)
+    return res.item() == 1
 
 
 class Statistics:
