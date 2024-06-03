@@ -200,7 +200,9 @@ class Cluster(object):
                 name=namespace + row.name if namespace else row.name,
                 application=APPLICATIONS[row.application],
                 submission_time=row.time,
-                target_num_replicas=row.num_replicas,
+                target_num_replicas=min(row.num_replicas,
+                                        self.num_nodes * self.num_gpus,
+                                        APPLICATIONS[row.application].max_num_replicas),
                 target_batch_size=APPLICATIONS[row.application].max_batch_size * random_scale(),
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
