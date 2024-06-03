@@ -323,14 +323,20 @@ class Cluster(object):
                 for rank, (node_ip, gpu_id) in enumerate(v):
                     proc_name = f"{k}:{rank}"
                     finished_proc.append((proc_name, (node_ip, gpu_id)))
-                    res = self.connects[node_ip].stats_proc(proc_name)
-                    print(f"self.connects[{node_ip}].stats_proc({proc_name}): {res}")
-                    assert res is not None
-                    if res.get("returncode") is None:
-                        print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) is still running")
-                        self.connects[node_ip].kill_proc(proc_name, force=True)
-                    if res.get("returncode") != 0:
-                        print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) exited unexpectedly")
+                    time_out, start_time = 60, time.time()
+                    while True:
+                        res = self.connects[node_ip].stats_proc(proc_name)
+                        print(f"self.connects[{node_ip}].stats_proc({proc_name}): {res}")
+                        if time.time() - start_time > time_out:
+                            raise ValueError(f"Timeout waiting for process {proc_name}({node_ip}:{gpu_id}) to exit")
+                        if res is None or res.get("returncode") is not None:
+                            if res.get("returncode") != 0:
+                                print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) exited unexpectedly")
+                            break
+                        if res.get("returncode") is None:
+                            print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) is still running")
+                            self.connects[node_ip].kill_proc(proc_name, force=True)
+                        time.sleep(1)
                     self.gpu_alloc[(node_ip, gpu_id)].remove(f"{k}:{rank}")
             else:
                 for rank, (node_ip, gpu_id) in enumerate(v):
