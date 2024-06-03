@@ -111,7 +111,7 @@ class Job(object):
         compute_time = step_time - sync_time
         self.perf_params = fit_perf_params(num_nodes, num_replicas, local_bsz, compute_time, step_time)
 
-    def step(self, seconds=60, interference=0.05):  # interference=0.05 represent the sequential and validation part
+    def step(self, seconds=60, interference=0.1):  # interference=0.1 represent the sequential and validation part
         if not self.placement:
             # No resources are allocated to this job.
             self.current_time += seconds
@@ -186,7 +186,7 @@ class Job(object):
 
 
 class Cluster(object):
-    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None):
+    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None):
         assert 1 <= num_gpus <= 4
         self.nodes = nodes.split(" ")
         self.num_nodes = len(self.nodes)
@@ -197,7 +197,7 @@ class Cluster(object):
         self.jobs = collections.OrderedDict()
         for row in pandas.read_csv(workload_name).itertuples():
             self.jobs[row.name] = Job(
-                name=row.name,
+                name=namespace + row.name if namespace else row.name,
                 application=APPLICATIONS[row.application],
                 submission_time=row.time,
                 target_num_replicas=row.num_replicas,
@@ -510,7 +510,9 @@ if __name__ == "__main__":
                         help="number of GPUs per node")
     parser.add_argument("--output", type=str, default=None,
                         help="output all logs to a json file")
+    parser.add_argument("--namespace", type=str, default=None,
+                        help="the prefix of each job_name")
     args = parser.parse_args()
 
-    cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output)
+    cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace)
     cluster.run()
