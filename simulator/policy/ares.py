@@ -13,8 +13,8 @@ def predict_step_time(job, num_replicas):
         placement = (*placement, min(num_replicas - sum(placement), 4))
     local_bsz = math.ceil(job.target_batch_size / num_replicas - 1e-8)  # gpu扩张会导致local_bsz减少而保持target_bsz不变
     accum_steps = math.ceil(local_bsz / job.application.max_local_bsz - 1e-8) - 1  # accum_steps表示额外的累积步数
-    if num_replicas == 1 and job.target_batch_size > job.application.init_batch_size:
-        accum_steps = max(1, accum_steps)
+    # if num_replicas == 1 and job.target_batch_size > job.application.init_batch_size:
+    #     accum_steps = max(1, accum_steps)
     atomic_bsz = math.ceil(local_bsz / (accum_steps + 1) - 1e-8)
     count = num_replicas * (accum_steps + 1)
     atomic_bsz = min(atomic_bsz, int(job.application.max_batch_size / count))

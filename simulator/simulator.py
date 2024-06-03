@@ -90,9 +90,9 @@ class Job(object):
         else:
             local_bsz = math.ceil(batch_size / num_replicas - 1e-8)
             self.accum_steps = math.ceil(local_bsz / app.max_local_bsz - 1e-8) - 1
-            if num_replicas == 1 and batch_size > app.init_batch_size:
-                # assert self.accum_steps > 0
-                self.accum_steps = max(1, self.accum_steps)
+            # if num_replicas == 1 and batch_size > app.init_batch_size:
+            #     # assert self.accum_steps > 0
+            #     self.accum_steps = max(1, self.accum_steps)
             self.atomic_bsz = math.ceil(local_bsz / (self.accum_steps + 1) - 1e-8)
         count = num_replicas * (self.accum_steps + 1)
         self.atomic_bsz = min(self.atomic_bsz, int(app.max_batch_size / count))
