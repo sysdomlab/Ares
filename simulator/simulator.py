@@ -111,7 +111,7 @@ class Job(object):
         compute_time = step_time - sync_time
         self.perf_params = fit_perf_params(num_nodes, num_replicas, local_bsz, compute_time, step_time)
 
-    def step(self, seconds=60):
+    def step(self, seconds=60, interference=0.05):  # interference=0.05 represent the sequential and validation part
         if not self.placement:
             # No resources are allocated to this job.
             self.current_time += seconds
@@ -139,8 +139,8 @@ class Job(object):
                                step_time, sync_time, grad_sqr, grad_var)
             # Calculate true (simulated) goodput.
             total_time = step_time + accum_time * self.accum_steps  # sec per iter
-            # goodput = gain / total_time  # progress per iter * iter per sec
-            goodput = scale / total_time  # progress per iter * iter per sec
+            # goodput = gain / total_time * (1.0 - interference)  # progress per iter * iter per sec
+            goodput = scale / total_time * (1.0 - interference)  # progress per iter * iter per sec
             # Update current epoch and progress.
             next_progress = self.application.get_progress(self.epoch + 1)  # get_progress 返回的是标准 iter 数
             # print(f"<<< job: {self.name}, self.epoch: {self.epoch}, \n"
