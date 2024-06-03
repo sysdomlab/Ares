@@ -133,6 +133,7 @@ class GPSSystem:
         """
         assume jobs can receive divisible number of gpus, and each job receives N / M gpus
         """
+        fair_share = min(fair_share, fair_job["max_replicas"])
         if int(fair_share) == 0:
             step_time = fair_job["step_time"][1] / fair_share
         elif fair_share != int(fair_share):
@@ -143,7 +144,7 @@ class GPSSystem:
             step_time = fair_job["step_time"][int(fair_share)]
         return step_time
 
-    def _add_job(self, key, job):
+    def _add_job(self, key, job: JobInfo):
         # get progress/iteration of job
         completion_progress = job.application.get_progress(job.application.max_epochs)
         scale = job.target_batch_size / job.application.init_batch_size

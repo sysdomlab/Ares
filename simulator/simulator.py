@@ -111,7 +111,7 @@ class Job(object):
         compute_time = step_time - sync_time
         self.perf_params = fit_perf_params(num_nodes, num_replicas, local_bsz, compute_time, step_time)
 
-    def step(self, seconds=60, interference=0.1):  # interference=0.1 represent the sequential and validation part
+    def step(self, seconds=60, interference=0.0):
         if not self.placement:
             # No resources are allocated to this job.
             self.current_time += seconds
@@ -175,7 +175,14 @@ class Job(object):
         if placement:
             self.placement = tuple(placement)
             self.update_local_bsz(self.placement)
-            self.rescale_time = 30  # Start re-scale countdown.
+            self.rescale_time = {
+                "bert": 120,  # 70,
+                "cifar10": 50,  # 20,
+                "deepspeech2": 25,  # 15,
+                "imagenet": 250,  # 90,
+                "ncf": 15,
+                "yolov3": 80,  # 15,
+            }[self.application.name]  # Start re-scale countdown.
             if self.num_restarts is None:
                 self.num_restarts = 0
             else:
@@ -196,8 +203,9 @@ class Cluster(object):
         self.start_time = time.time()
         self.jobs = collections.OrderedDict()
         for row in pandas.read_csv(workload_name).itertuples():
-            self.jobs[row.name] = Job(
-                name=namespace + row.name if namespace else row.name,
+            job_name = row.name + "-" + namespace if namespace else row.name
+            self.jobs[job_name] = Job(
+                name=job_name,
                 application=APPLICATIONS[row.application],
                 submission_time=row.time,
                 target_num_replicas=min(row.num_replicas,
@@ -291,7 +299,7 @@ class Cluster(object):
             creation_timestamp=job.submission_time,
             attained_service=job.attained_service,
             min_replicas=0,
-            max_replicas=job.target_batch_size // job.application.min_local_bsz,
+            max_replicas=min(job.target_batch_size // job.application.min_local_bsz, job.application.max_num_replicas),
         )
         job_info.epoch = job.epoch
         job_info.application = job.application

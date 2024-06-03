@@ -5,28 +5,17 @@ from tqdm import tqdm
 workloads = [
     f"{name}/workload-{j}.csv"
     for name in [
-        # "workloads-2.0",
-        # "workloads-1.5",
-        # "workloads-realistic",
-        # "workloads-1.0",
-        # "workloads-0.5",
-        # "newtrace",
-        # "philly",
-        # "saturn",
         "workloads-4h-40j",
-        # "workloads-4h-80j",
     ]
-    for j in [1, 2, 3, 4, 5, 6, 7, 8]
+    for j in [6]
 ]
 policies = [
     'pollux',
     'optimus',
     'tiresias',
-    # 'sjf',
-    # 'fifo',
     'ares',
 ]
-exp_name = "0.75_MaxBsz"
+exp_name = "SimulatorFidelity"
 
 python3 = "/home/cchen/miniconda3/envs/yfliu/bin/python3"
 

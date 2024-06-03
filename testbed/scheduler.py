@@ -162,8 +162,9 @@ class Cluster(object):
         self.start_time = time.time()
         self.jobs = collections.OrderedDict()
         for row in pandas.read_csv(workload_name).itertuples():
-            self.jobs[row.name] = Job(
-                name=namespace + row.name if namespace else row.name,
+            job_name = row.name + "-" + namespace if namespace else row.name
+            self.jobs[job_name] = Job(
+                name=job_name,
                 application=APPLICATIONS[row.application],
                 submission_time=row.time,
                 target_num_replicas=min(row.num_replicas,
@@ -257,7 +258,7 @@ class Cluster(object):
             creation_timestamp=job.submission_time,
             attained_service=job.attained_service,
             min_replicas=0,
-            max_replicas=job.target_batch_size // job.application.min_local_bsz,
+            max_replicas=min(job.target_batch_size // job.application.min_local_bsz, job.application.max_num_replicas),
         )
         job_info.epoch = job.epoch
         job_info.application = job.application
