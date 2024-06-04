@@ -49,57 +49,65 @@ if __name__ == '__main__':
         all_step_times[app_name], all_sync_times[app_name], all_efficiency[app_name], all_speedup[app_name] \
             = step_times, sync_times, efficiency, speedup
 
-    # iso-efficiency
+    label_dict = {
+        "bert": "BERT",
+        "cifar10": "ResNet18",
+        "ncf": "NeuMF",
+        "imagenet": "ResNet50",
+        "deepspeech2": "DeepSpeech2",
+        "yolov3": "YOLOv3",
+    }
+    fontsize = 32
+    legend_fontsize = 19
+    left, right, top, bottom = 0.17, 1, 1, 0.14
+    linewidth = 2
+    markersize = 10
+
+    # 1. iso-efficiency
+    plt.figure(figsize=(8, 7))
     plt.style.use('ggplot')
+    num_replicas_list = [1, 2, 4, 8, 16, 32]
+    x = np.log2(num_replicas_list)
+
+    plt.plot(x, [1, 1, 1, 1, 1, 1], color='black', linestyle='--', linewidth=linewidth, label="Linear", markersize=markersize)
     for app_name, app in APPLICATIONS.items():
         efficiency = all_efficiency[app_name]
+        y = [efficiency[num_replicas] for num_replicas in num_replicas_list]
+        plt.plot(x, y, marker='8', linestyle='-', linewidth=linewidth, label=label_dict[app_name], markersize=markersize)
 
-        # 数据存储列表
-        num_replicas_list, values = [], []
-        for num_replicas in [1, 2, 4, 8, 16, 32]:  # [1, 2, 4, 8, 16, 32]:  # range(1, 1 + 32):
-            # 将数据添加到列表中
-            num_replicas_list.append(num_replicas)
-            values.append(efficiency[num_replicas])
+    plt.xticks(x, num_replicas_list, fontsize=fontsize, color='black')
+    plt.yticks(fontsize=fontsize, color='black')
 
-        # 绘制折线图
-        num_replicas_log2 = np.log2(num_replicas_list)
-        plt.plot(num_replicas_log2, values, label=app_name)
-
-        power_of_2 = [2 ** i for i in range(int(math.log2(max(num_replicas_list))) + 1)]
-        power_of_2_log2 = np.log2(power_of_2)
-        plt.xticks(power_of_2_log2, power_of_2)
-
-    plt.title("Iso-Efficiency")
-    plt.xlabel("Num of GPUs")
-    plt.ylabel("Normalized Throughput")
-    plt.legend()
+    # plt.title("Efficiency", fontsize=fontsize)
+    plt.xlabel("Number of GPUs", fontsize=fontsize, color='black')
+    plt.ylabel("Normalized Throughput", fontsize=fontsize, color='black')
+    plt.legend(fontsize=legend_fontsize)
+    plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+    plt.savefig("plot/Efficiency.pdf")
+    plt.savefig("plot/Efficiency.png")
     plt.show()
 
-    # speedup
+    # 2. speedup
+    plt.figure(figsize=(8, 7))
+    print(plt.style.available)
     plt.style.use('ggplot')
+    num_replicas_list = [1, 2, 4, 8, 16, 32]
+    x = [0] + num_replicas_list
+    plt.plot(x, x, color='black', linestyle='--', linewidth=linewidth, label="Linear", markersize=markersize)
     for app_name, app in APPLICATIONS.items():
         speedup = all_speedup[app_name]
+        y = [0] + [speedup[num_replicas] for num_replicas in num_replicas_list]
+        plt.plot(x, y, marker='8', linestyle='-', linewidth=linewidth, label=label_dict[app_name], markersize=markersize)
 
-        # 数据存储列表
-        num_replicas_list, values = [0], [0]
-        for num_replicas in [1, 2, 4, 8, 16, 32]:  # [1, 2, 4, 8, 16, 32]:  # range(1, 1 + 32):
-            # 将数据添加到列表中
-            num_replicas_list.append(num_replicas)
-            values.append(speedup[num_replicas])
+    xticks = list(range(0, 33, 8))
+    plt.xticks(xticks, xticks, fontsize=fontsize, color='black')
+    plt.yticks(xticks, xticks, fontsize=fontsize, color='black')
 
-        # 绘制折线图
-        # num_replicas_log2 = np.log2(num_replicas_list)
-        plt.plot(num_replicas_list, values, label=app_name)
-
-        # power_of_2 = [2 ** i for i in range(int(math.log2(max(num_replicas_list))) + 1)]
-        # power_of_2_log2 = np.log2(power_of_2)
-        # plt.xticks(power_of_2_log2, power_of_2)
-        xticks = list(range(0, 33, 4))
-        plt.xticks(xticks, xticks)
-
-    plt.title("Speedup")
-    plt.xlabel("Num of GPUs")
-    plt.ylabel("Normalized Throughput")
-    plt.legend()
+    # plt.title("Speedup", fontsize=fontsize)
+    plt.xlabel("Number of GPUs", fontsize=fontsize, color='black')
+    plt.ylabel("Normalized Throughput", fontsize=fontsize, color='black')
+    plt.legend(fontsize=legend_fontsize)
+    plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+    plt.savefig("plot/Speedup.pdf")
+    plt.savefig("plot/Speedup.png")
     plt.show()
-
