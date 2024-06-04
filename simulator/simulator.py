@@ -464,7 +464,7 @@ class Cluster(object):
     def print_logs(self):
         entry = {
             "timestamp": self.current_time,
-            "num_nodes": self.num_nodes,
+            # "num_nodes": self.num_nodes,
             "used_gpus": sum(map(len, self.running_allocations.values())),
             "allocations": self.running_allocations,
             "submitted_jobs": [
@@ -479,7 +479,7 @@ class Cluster(object):
                     "accum_steps": job.accum_steps,
                     "submission_time": job.submission_time,
                     "completion_time": job.completion_time,
-                    "grad_params": job.grad_params,
+                    # "grad_params": job.grad_params,
                     "attained_service": job.attained_service,
                 }
                 for job in self.jobs.values()
@@ -507,12 +507,12 @@ class Cluster(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--workload", type=str, default="./workload/workloads-4h-40j/workload-3.csv",
+    parser.add_argument("--workload", type=str, default="./workload/philly/workload-3.csv",
                         help="path to workload csv")
-    parser.add_argument("--policy", type=str, default="ares", choices=get_all_policies(),
+    parser.add_argument("--policy", type=str, default="optimus", choices=get_all_policies(),
                         help="scheduler policy")
     parser.add_argument("--nodes", type=str,
-                        default=" ".join([f"10.0.0.{i}" for i in range(19, 19 + 4)]),
+                        default=" ".join([f"{i}" for i in range(19, 19 + 8)]),
                         help="list of node IPs")
     parser.add_argument("--interval", type=int, default=60,
                         help="scheduling interval in seconds")
