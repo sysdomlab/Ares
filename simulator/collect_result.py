@@ -21,6 +21,7 @@ def get_all_files_in_directory(directory, exclude_substr: list = None):
             file_paths.append(os.path.join(root, file))
     if exclude_substr is not None:
         file_paths = [i for i in file_paths if all(j not in i for j in exclude_substr)]
+        file_paths = [i for i in file_paths if "txt" in i]
     return file_paths
 
 
@@ -340,76 +341,87 @@ def plot_scheduling(res_data, wl_set, wl_set_filter=None, wl_filter=None, algo_f
             print(f"finish plot {wl_set}/visualized_schedules_{workload}-{algo}.jpg")
 
 
-def main():
-    # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
-    workload_sets = ["workloads-4h-40j"]
-    for workload_set in workload_sets:
-        # 1. avg jct
-        results_data = get_jct_from_raw_log(workload_set)
-        df = pd.DataFrame(results_data)
-        print(df)
-        # print(get_markdown_table(df))
-        plot_grouped_bar(df, workload_set, "Avg_JCT")
+def main(workload_set):
+    # 1. avg jct
+    results_data = get_jct_from_raw_log(workload_set)
+    df = pd.DataFrame(results_data)
+    print(df)
+    # print(get_markdown_table(df))
+    plot_grouped_bar(df, workload_set, "Average JCT")
 
-        # 2. p99 jct
-        results_data = get_p99_jct_from_raw_log(workload_set)
-        df = pd.DataFrame(results_data)
-        plot_grouped_bar(df, workload_set, "P99_JCT")
+    # 2. p99 jct
+    results_data = get_p99_jct_from_raw_log(workload_set)
+    df = pd.DataFrame(results_data)
+    plot_grouped_bar(df, workload_set, "P99 JCT")
 
-        # 3. Makespan
-        results_data = get_makespan_from_raw_log(workload_set)
-        df = pd.DataFrame(results_data)
-        plot_grouped_bar(df, workload_set, "Makespan")
+    # 3. Makespan
+    results_data = get_makespan_from_raw_log(workload_set)
+    df = pd.DataFrame(results_data)
+    plot_grouped_bar(df, workload_set, "Makespan")
 
-        # 4. finish time fairness
-        #   4.1 FTF CDF
-        real_jct = get_all_jct_from_raw_log(workload_set)
-        fair_jct = get_fair_jct_from_raw_log(workload_set)
-        ftf = calculate_ftf(real_jct, fair_jct)
-        plot_cdf(ftf, workload_set)
+    # 4. finish time fairness
+    #   4.1 FTF CDF
+    real_jct = get_all_jct_from_raw_log(workload_set)
+    fair_jct = get_fair_jct_from_raw_log(workload_set)
+    ftf = calculate_ftf(real_jct, fair_jct)
+    plot_cdf(ftf, workload_set)
 
-        #   4.1 FTF bar chart
-        results_data = []
-        for workload, algo_data in ftf.items():
-            for algo, job in algo_data.items():
-                avg_ftf = sum(job.values()) / len(job)
-                max_ftf = max(job.values())
-                min_ftf = min(job.values())
-                for job_id, ftf_value in job.items():
-                    results_data.append({
-                        "workload": workload,
-                        "algo": algo,
-                        "res": avg_ftf,
-                        "min": min_ftf,
-                        "max": max_ftf
-                    })
-        df = pd.DataFrame(results_data)
-        plot_grouped_bar_with_error_bars(df, workload_set, "FTF")
+    #   4.1 FTF bar chart
+    results_data = []
+    for workload, algo_data in ftf.items():
+        for algo, job in algo_data.items():
+            avg_ftf = sum(job.values()) / len(job)
+            max_ftf = max(job.values())
+            min_ftf = min(job.values())
+            for job_id, ftf_value in job.items():
+                results_data.append({
+                    "workload": workload,
+                    "algo": algo,
+                    "res": avg_ftf,
+                    "min": min_ftf,
+                    "max": max_ftf
+                })
+    df = pd.DataFrame(results_data)
+    plot_grouped_bar_with_error_bars(df, workload_set, "FTF")
 
-        # 5. visualize scheduling decision
-        # results_data = get_scheduling_from_raw_log(workload_set)
-        # plot_scheduling(results_data, workload_set,
-        #                 wl_set_filter=[
-        #                     "workloads-0.5",
-        #                     "workloads-1.0",
-        #                     "workloads-1.5",
-        #                     "workloads-2.0",
-        #                     "workloads-realistic",
-        #                 ],
-        #                 wl_filter=["1"],
-        #                 algo_filter=[
-        #                     "ares",
-        #                     "optimus",
-        #                     "pollux",
-        #                     "tiresias",
-        #                     "sjf"
-        #                 ])
+    # 5. visualize scheduling decision
+    results_data = get_scheduling_from_raw_log(workload_set)
+    plot_scheduling(results_data, workload_set,
+                    wl_set_filter=[
+                        "workloads-0.5",
+                        "workloads-1.0",
+                        "workloads-1.5",
+                        "workloads-2.0",
+                        "workloads-realistic",
+                        "philly", "saturn", "newtrace"
+                    ],
+                    wl_filter=["1"],
+                    algo_filter=[
+                        "ares",
+                        "optimus",
+                        "pollux",
+                        "tiresias",
+                        # "sjf"
+                    ])
 
-        pass
+    pass
+
+
+def main_v2(workload_set):
+    # 1. avg jct
+    results_data = get_jct_from_raw_log(workload_set)
+    df = pd.DataFrame(results_data)
+    print(df)
+    plot_grouped_bar(df, workload_set, "Average JCT")
+
+
 
 
 if __name__ == '__main__':
-    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/0.75_MaxBsz")
-    main()
-    # os.chdir(f"/home/yfliu/cluster_schedule/Pollux/simulator/simulator_logs/0.75_RowBsz")
-    # main()
+    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-16nodes")
+
+    # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
+    workload_sets = ["philly", "saturn", "newtrace"]
+    for workload_set in workload_sets:
+        # main(workload_set)
+        main_v2(workload_set)
