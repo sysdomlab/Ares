@@ -31,7 +31,7 @@ for policy in policies:
         log_file = f'{log_dir}/{policy}.txt'
         json_file = f'{log_dir}/{policy}.json'
         command = (f'{python3} simulator.py'
-                   f' --workload {workload_path} --policy {policy} --output {json_file}'
+                   f' --workload {workload_path} --policy {policy} --output {json_file} --nodes "0 1 2 3"'
                    f' 2>&1 > {log_file}')
         commands.append(command)
 

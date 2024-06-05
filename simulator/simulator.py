@@ -7,11 +7,11 @@ import time
 import math
 import numpy as np
 import pandas
-import zerorpc
+# import zerorpc
 
-from framework import load_job_state
-from models.tool import get_cmd
-from models.env import get_checkpoint_path
+# from framework import load_job_state
+# from models.tool import get_cmd
+# from models.env import get_checkpoint_path
 from policy.applications import APPLICATIONS
 from policy.goodput import GoodputFunction, fit_perf_params
 from policy.speedup import SpeedupFunction
@@ -173,20 +173,19 @@ class Job(object):
 
     def reallocate(self, placement):
         if placement:
+            if len(placement) != len(self.placement):
+                # ignore re-allocating delay if it is caused by the limit of profiling
+                self.rescale_time = {
+                    "bert": 120,
+                    "cifar10": 50,
+                    "deepspeech2": 25,
+                    "imagenet": 250,
+                    "ncf": 15,
+                    "yolov3": 80,
+                }[self.application.name]  # Start re-scale countdown.
+                self.num_restarts = self.num_restarts + 1 if self.num_restarts is not None else 0
             self.placement = tuple(placement)
             self.update_local_bsz(self.placement)
-            self.rescale_time = {
-                "bert": 120,  # 70,
-                "cifar10": 50,  # 20,
-                "deepspeech2": 25,  # 15,
-                "imagenet": 250,  # 90,
-                "ncf": 15,
-                "yolov3": 80,  # 15,
-            }[self.application.name]  # Start re-scale countdown.
-            if self.num_restarts is None:
-                self.num_restarts = 0
-            else:
-                self.num_restarts += 1
         else:  # De-allocate all resources.
             self.placement = ()
             self.atomic_bsz = 0
@@ -195,6 +194,8 @@ class Job(object):
 class Cluster(object):
     def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None):
         assert 1 <= num_gpus <= 4
+        self.workload_name = workload_name
+        self.policy_name = policy_name
         self.nodes = nodes.split(" ")
         self.num_nodes = len(self.nodes)
         self.num_gpus = num_gpus
@@ -228,6 +229,8 @@ class Cluster(object):
         # for node_ip in self.nodes:
         #     self.connects[node_ip] = zerorpc.Client()
         #     self.connects[node_ip].connect(f"tcp://{node_ip}:4242")
+
+        self.force_shrink = 0
 
     def get_free_gpu(self, node):
         for i in range(self.num_gpus):
@@ -336,6 +339,35 @@ class Cluster(object):
     def optimize(self, job_infos, node_infos, prev_allocations):
         # 算法选择
         new_allocations, _ = self.policy.optimize(job_infos, node_infos, prev_allocations)
+        # shrink to <=8 nodes per job (Forcefully clean up fragments)
+        if any(len(set(v)) > 8 for v in new_allocations.values()):
+            num_replicas = {k: len(v) for k, v in new_allocations.items()}
+            allocations = {}
+            job_keys = sorted(job_infos, key=lambda k: num_replicas[k], reverse=True)
+            total_gpus = {idx: int(node.resources['nvidia.com/gpu']) for idx, node in node_infos.items()}
+            total_gpus = collections.Counter(total_gpus)
+            for key in job_keys:
+                if num_replicas[key] > 0:
+                    # Allocate resources.
+                    allocations[key] = []
+                    while num_replicas[key] - len(allocations[key]) > 0:
+                        need_num = num_replicas[key] - len(allocations[key])
+                        if need_num >= 4 or need_num > total_gpus.most_common()[-1][1]:
+                            node_idx, count = total_gpus.most_common()[0]
+                        else:
+                            node_idx, count = total_gpus.most_common()[-1]
+                        num = min(count, need_num)
+                        allocations[key].extend([node_idx] * num)
+                        total_gpus[node_idx] -= num
+                        if total_gpus[node_idx] == 0:
+                            del total_gpus[node_idx]
+            new_allocations = allocations
+            self.force_shrink += 1
+        num_replicas = {k: len(v) for k, v in new_allocations.items()}
+        assert not any(len(set(v)) > 8 for v in new_allocations.values()), \
+            (f"{self.policy_name} in {self.workload_name}: \n"
+             f"{new_allocations}\n"
+             f"{num_replicas}")
         # 检查合法性
         for k in new_allocations.keys():
             new_allocations[k] = sorted(new_allocations[k])
@@ -499,7 +531,7 @@ class Cluster(object):
                 print(f"\t{val['name']}:\t[epoch {val['epoch']}]\t[restarts {val['num_restarts']}]\t"
                       f"[batch size {val['batch_size']}]\t[placement {val['placement']}]")
         print(f"allocations: {entry['allocations']}")
-        print(f"GPU utilization: {entry['used_gpus']}")
+        print(f"GPU utilization: {entry['used_gpus']}, Force shrink: {self.force_shrink}")
         print(f"Completed jobs [{len(entry['jct'])}]:")
         print(entry['jct'])
         print("Average JCT:", entry["avg_jct"])
@@ -509,10 +541,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, default="./workload/philly/workload-3.csv",
                         help="path to workload csv")
-    parser.add_argument("--policy", type=str, default="optimus", choices=get_all_policies(),
+    parser.add_argument("--policy", type=str, default="ares", choices=get_all_policies(),
                         help="scheduler policy")
     parser.add_argument("--nodes", type=str,
-                        default=" ".join([f"{i}" for i in range(19, 19 + 8)]),
+                        default=" ".join([f"{i}" for i in range(16)]),
                         help="list of node IPs")
     parser.add_argument("--interval", type=int, default=60,
                         help="scheduling interval in seconds")

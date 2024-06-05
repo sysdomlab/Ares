@@ -1,0 +1,1 @@
+nohup python3 start_for_full_simulation.py > start_for_full_simulation.log 2>&1 &

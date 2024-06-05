@@ -1,4 +1,5 @@
 import os
+import subprocess
 from multiprocessing import Pool
 from tqdm import tqdm
 
@@ -20,13 +21,13 @@ workloads = [
 ]
 policies = [
     'pollux',
-    # 'optimus',
-    # 'tiresias',
+    'optimus',
+    'tiresias',
     # 'sjf',
     # 'fifo',
-    # 'ares',
+    'ares',
 ]
-exp_name = "Simulation-8nodes"
+exp_name = "Simulation-16nodes"
 
 python3 = "/home/cchen/miniconda3/envs/yfliu/bin/python3"
 
@@ -43,6 +44,7 @@ for policy in policies:
         json_file = f'{log_dir}/{policy}.json'
         command = (f'{python3} simulator.py'
                    f' --workload {workload_path} --policy {policy} --output {json_file}'
+                   f' --nodes "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"'
                    f' 2>&1 > {log_file}')
         commands.append(command)
 
@@ -51,12 +53,14 @@ print(f'Total commands: {len(commands)}')
 
 def execute_command(command):
     try:
-        os.system(command)
+        p = subprocess.Popen(command, shell=True)
+        p.wait()
     except Exception as e:
         print(f'Error executing command: {command}')
 
 
 if __name__ == '__main__':
-    pool_size = os.cpu_count()
+    # nohup python3 start_for_full_simulation.py > start_for_full_simulation.log 2>&1 &
+    pool_size = os.cpu_count() // 4 * 3
     with Pool(pool_size) as pool:
         list(tqdm(pool.imap_unordered(execute_command, commands), total=len(commands)))
