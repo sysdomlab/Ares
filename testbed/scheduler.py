@@ -333,7 +333,7 @@ class Cluster(object):
                         if time.time() - start_time > time_out:
                             raise ValueError(f"Timeout waiting for process {proc_name}({node_ip}:{gpu_id}) to exit")
                         if res is None or res.get("returncode") is not None:
-                            if res.get("returncode") != 0:
+                            if res is not None and res.get("returncode") != 0:
                                 print(f"[WARN]Process {proc_name}({node_ip}:{gpu_id}) exited unexpectedly")
                             break
                         if res.get("returncode") is None:
