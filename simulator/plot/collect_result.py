@@ -25,7 +25,38 @@ def get_all_files_in_directory(directory, exclude_substr: list = None):
     return file_paths
 
 
-def get_jct_from_raw_log(wl_set):
+def get_jct(log_file):
+    result = subprocess.run(
+        ["tail", "-n", "1", log_file],
+        capture_output=True,
+        text=True
+    )
+    res = float(result.stdout.strip().split()[-1]) / 60 / 60
+    return res
+
+
+def get_p99_jct(log_file):
+    result = subprocess.run(
+        ["tail", "-n", "2", log_file],
+        capture_output=True,
+        text=True
+    )
+    res_dict: dict = eval(result.stdout.split("\n")[0])
+    jct_values = [i for i in res_dict.values()]
+    res = np.percentile(jct_values, 99) / 60 / 60
+    return res
+
+
+def get_makespan(log_file):
+    res = 0
+    with open(log_file, 'r') as f:
+        for line in f:
+            if "SIMULATOR TIME" in line and "GPSSystem" not in line:
+                res = float(line.split(":")[-1].strip().split(" ")[0]) / 60 / 60
+    return res
+
+
+def get_data_from_raw_log(wl_set, metric):
     results_data = []
     for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
         # 从文件名中提取工作负载和算法
@@ -33,73 +64,20 @@ def get_jct_from_raw_log(wl_set):
         algo = file.split("/")[-1].split(".")[0]
         # print(f"Workload: {workload}, Algorithm: {algo}")
 
-        # 执行 tail 命令获取最后一行的输出
-        result = subprocess.run(
-            ["tail", "-n", "1", file],
-            capture_output=True,
-            text=True
-        )
-
-        # 提取最后一行的 JCT 值
-        res = float(result.stdout.strip().split()[-1]) / 60 / 60
+        if metric == "avg_jct":
+            res = get_jct(file)
+        elif metric == "p99_jct":
+            res = get_p99_jct(file)
+        elif metric == "makespan":
+            res = get_makespan(file)
+        else:
+            raise ValueError(f"Invalid metric: {metric}")
 
         # 将结果数据添加到列表中
         results_data.append({
             "workload": workload,
             "algo": algo,
             "res": res
-        })
-    return results_data
-
-
-def get_p99_jct_from_raw_log(wl_set):
-    results_data = []
-    for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
-        # 从文件名中提取工作负载和算法
-        workload = file.split("/")[-2].split("-")[-1]
-        algo = file.split("/")[-1].split(".")[0]
-        # print(f"Workload: {workload}, Algorithm: {algo}")
-
-        # 执行 tail 命令获取最后一行的输出
-        result = subprocess.run(
-            ["tail", "-n", "2", file],
-            capture_output=True,
-            text=True
-        )
-
-        res_dict: dict = eval(result.stdout.split("\n")[0])
-        jct_values = [i for i in res_dict.values()]
-        res = np.percentile(jct_values, 99) / 60 / 60
-        # print(res, jct_values)
-
-        # 将结果数据添加到列表中
-        results_data.append({
-            "workload": workload,
-            "algo": algo,
-            "res": res
-        })
-    return results_data
-
-
-def get_makespan_from_raw_log(wl_set):
-    results_data = []
-    for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
-        # 从文件名中提取工作负载和算法
-        workload = file.split("/")[-2].split("-")[-1]
-        algo = file.split("/")[-1].split(".")[0]
-        # print(f"Workload: {workload}, Algorithm: {algo}")
-
-        simulator_time = 0
-        with open(file, 'r') as f:
-            for line in f:
-                if "SIMULATOR TIME" in line:
-                    simulator_time = float(line.split(":")[-1].strip().split(" ")[0]) / 60 / 60
-                    # print(simulator_time)
-        # 将结果数据添加到列表中
-        results_data.append({
-            "workload": workload,
-            "algo": algo,
-            "res": simulator_time
         })
     return results_data
 
@@ -220,10 +198,10 @@ def plot_grouped_bar_with_error_bars(src, wl_set, metric):
     # Grouping the data by 'workload' and 'algo' and calculating mean JCT
     grouped_df = src.groupby(['workload', 'algo'])['res'].mean().unstack()
     # Calculating error (min and max)
-    min_values = src.groupby(['workload', 'algo'])['min'].mean().unstack()
-    max_values = src.groupby(['workload', 'algo'])['max'].mean().unstack()
-    errors = np.stack([min_values.values, max_values.values], axis=2)
-    errors = np.transpose(errors, (1, 2, 0))
+    # min_values = src.groupby(['workload', 'algo'])['min'].mean().unstack()
+    # max_values = src.groupby(['workload', 'algo'])['max'].mean().unstack()
+    # errors = np.stack([min_values.values, max_values.values], axis=2)
+    # errors = np.transpose(errors, (1, 2, 0))
 
     # Plotting the bar chart with error bars
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -275,12 +253,12 @@ def get_scheduling_from_raw_log(wl_set):
             # print(available_gpus)
             for task, gpu_config in match.items():
                 for gpu_id in gpu_config:
-                    machine_id = int(gpu_id)
+                    machine_id = int(gpu_id[0])
                     gpu_index = available_gpus[machine_id]
                     available_gpus[machine_id] += 1
                     # print(machine_id, gpu_index)
                     # print(match)
-                    data[i, machine_id, gpu_index] = task_flag[task[1].split("-")[0]]
+                    data[i, machine_id, gpu_index] = task_flag[task.split("-")[0]]
 
         results_data[workload][algo] = data
     return results_data
@@ -343,19 +321,19 @@ def plot_scheduling(res_data, wl_set, wl_set_filter=None, wl_filter=None, algo_f
 
 def main(workload_set):
     # 1. avg jct
-    results_data = get_jct_from_raw_log(workload_set)
+    results_data = get_data_from_raw_log(workload_set, "avg_jct")
     df = pd.DataFrame(results_data)
     print(df)
     # print(get_markdown_table(df))
     plot_grouped_bar(df, workload_set, "Average JCT")
 
     # 2. p99 jct
-    results_data = get_p99_jct_from_raw_log(workload_set)
+    results_data = get_data_from_raw_log(workload_set, "p99_jct")
     df = pd.DataFrame(results_data)
     plot_grouped_bar(df, workload_set, "P99 JCT")
 
     # 3. Makespan
-    results_data = get_makespan_from_raw_log(workload_set)
+    results_data = get_data_from_raw_log(workload_set, "makespan")
     df = pd.DataFrame(results_data)
     plot_grouped_bar(df, workload_set, "Makespan")
 
@@ -367,61 +345,47 @@ def main(workload_set):
     plot_cdf(ftf, workload_set)
 
     #   4.1 FTF bar chart
-    results_data = []
-    for workload, algo_data in ftf.items():
-        for algo, job in algo_data.items():
-            avg_ftf = sum(job.values()) / len(job)
-            max_ftf = max(job.values())
-            min_ftf = min(job.values())
-            for job_id, ftf_value in job.items():
-                results_data.append({
-                    "workload": workload,
-                    "algo": algo,
-                    "res": avg_ftf,
-                    "min": min_ftf,
-                    "max": max_ftf
-                })
+    results_data = [
+        {
+            "workload": workload,
+            "algo": algo,
+            "res": sum(job.values()) / len(job),
+        }
+        for workload, algo_data in ftf.items()
+        for algo, job in algo_data.items()
+    ]
     df = pd.DataFrame(results_data)
     plot_grouped_bar_with_error_bars(df, workload_set, "FTF")
 
-    # 5. visualize scheduling decision
-    results_data = get_scheduling_from_raw_log(workload_set)
-    plot_scheduling(results_data, workload_set,
-                    wl_set_filter=[
-                        "workloads-0.5",
-                        "workloads-1.0",
-                        "workloads-1.5",
-                        "workloads-2.0",
-                        "workloads-realistic",
-                        "philly", "saturn", "newtrace"
-                    ],
-                    wl_filter=["1"],
-                    algo_filter=[
-                        "ares",
-                        "optimus",
-                        "pollux",
-                        "tiresias",
-                        # "sjf"
-                    ])
+    # # 5. visualize scheduling decision
+    # results_data = get_scheduling_from_raw_log(workload_set)
+    # plot_scheduling(results_data, workload_set,
+    #                 wl_set_filter=[
+    #                     "workloads-0.5",
+    #                     "workloads-1.0",
+    #                     "workloads-1.5",
+    #                     "workloads-2.0",
+    #                     "workloads-realistic",
+    #                     "philly", "saturn", "newtrace"
+    #                 ],
+    #                 wl_filter=["1", "2", "3", "4", "5", "6", "7", "8"],
+    #                 algo_filter=[
+    #                     "ares",
+    #                     "optimus",
+    #                     "pollux",
+    #                     "tiresias",
+    #                     # "sjf"
+    #                 ])
 
     pass
 
 
-def main_v2(workload_set):
-    # 1. avg jct
-    results_data = get_jct_from_raw_log(workload_set)
-    df = pd.DataFrame(results_data)
-    print(df)
-    plot_grouped_bar(df, workload_set, "Average JCT")
-
-
-
-
 if __name__ == '__main__':
+    # nohup python3 collect_result.py > collect_result.log 2>&1 &
     os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-16nodes")
 
     # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
     workload_sets = ["philly", "saturn", "newtrace"]
+    # workload_sets = ["newtrace"]
     for workload_set in workload_sets:
-        # main(workload_set)
-        main_v2(workload_set)
+        main(workload_set)  # used for quick test and overall inspection
