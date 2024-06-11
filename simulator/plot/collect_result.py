@@ -8,7 +8,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from collections import defaultdict
-from time import sleep
 
 from matplotlib.patches import Patch
 
@@ -25,7 +24,7 @@ def get_all_files_in_directory(directory, exclude_substr: list = None):
     return file_paths
 
 
-def get_jct(log_file):
+def get_avg_jct(log_file):
     result = subprocess.run(
         ["tail", "-n", "1", log_file],
         capture_output=True,
@@ -65,7 +64,7 @@ def get_data_from_raw_log(wl_set, metric):
         # print(f"Workload: {workload}, Algorithm: {algo}")
 
         if metric == "avg_jct":
-            res = get_jct(file)
+            res = get_avg_jct(file)
         elif metric == "p99_jct":
             res = get_p99_jct(file)
         elif metric == "makespan":
@@ -114,6 +113,26 @@ def plot_grouped_bar(src, wl_set, metric):
     print(f"finish plot {wl_set}/{metric}.jpg")
 
 
+def get_all_jct(log_file):
+    result = subprocess.run(
+        ["tail", "-n", "2", log_file],
+        capture_output=True,
+        text=True
+    )
+    res: dict = eval(result.stdout.split("\n")[0])
+    return res
+
+
+def get_fair_jct(log_file):
+    result = "{}"
+    with open(log_file, 'r') as f:
+        for line in f:
+            if "[GPSSystem]" in line and "Average JCT" not in line and "SIMULATOR TIME" not in line:
+                result = line.replace("[GPSSystem]", "")
+    res: dict = eval(result)
+    return res
+
+
 def get_all_jct_from_raw_log(wl_set):
     results_data = defaultdict(dict)
     for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
@@ -121,13 +140,7 @@ def get_all_jct_from_raw_log(wl_set):
         algo = file.split("/")[-1].split(".")[0]
         # print(f"Workload: {workload}, Algorithm: {algo}")
 
-        result = subprocess.run(
-            ["tail", "-n", "2", file],
-            capture_output=True,
-            text=True
-        )
-
-        res_dict: dict = eval(result.stdout.split("\n")[0])
+        res_dict: dict = get_all_jct(file)
         # print(res_dict)
 
         results_data[workload][algo] = res_dict
@@ -142,28 +155,40 @@ def get_fair_jct_from_raw_log(wl_set):
         workload = file.split("/")[-2].split("-")[-1]
         # print(workload, file)
 
-        result = "{}"
-        with open(file, 'r') as f:
-            for line in f:
-                if "[GPSSystem]" in line and "Average JCT" not in line and "SIMULATOR TIME" not in line:
-                    result = line.replace("[GPSSystem]", "")
-        res_dict: dict = eval(result)
+        res_dict: dict = get_fair_jct(file)
         # print(res_dict)
 
         results_data[workload] = res_dict
     return results_data
 
 
+def calculate_ftf_in_algo(jct_data, fair_jct_data):
+    return {
+        job_name: jct / fair_jct_data[job_name]
+        if len(job_name.split("-")) == 2
+        else jct / fair_jct_data["-".join(job_name.split("-")[:-1])]
+        for job_name, jct in jct_data.items()
+    }
+
+
+def calculate_ftf_in_workload(jct_data, fair_jct_data):
+    # res = defaultdict(dict)
+    # for algo, jct_values in jct_data.items():
+    #     res[algo] = {}
+    #     for job_name, jct in jct_values.items():
+    #         fair_jct = fair_jct_data.get(job_name, None)
+    #         res[algo][job_name] = jct / fair_jct
+    return {
+        algo: calculate_ftf_in_algo(jct_values, fair_jct_data)
+        for algo, jct_values in jct_data.items()
+    }
+
+
 def calculate_ftf(jct_data, fair_jct_data):
-    jct_ratio_data = {}
-    for workload, algo_data in jct_data.items():
-        jct_ratio_data[workload] = {}
-        for algo, jct_values in algo_data.items():
-            jct_ratio_data[workload][algo] = {}
-            for job_id, jct in jct_values.items():
-                fair_jct = fair_jct_data.get(workload, {}).get(job_id, None)
-                jct_ratio_data[workload][algo][job_id] = jct / fair_jct
-    return jct_ratio_data
+    return {
+        workload: calculate_ftf_in_workload(jct_data[workload], fair_jct_data[workload])
+        for workload in jct_data.keys()
+    }
 
 
 def plot_cdf(data, wl_set):
@@ -197,11 +222,6 @@ def plot_grouped_bar_with_error_bars(src, wl_set, metric):
 
     # Grouping the data by 'workload' and 'algo' and calculating mean JCT
     grouped_df = src.groupby(['workload', 'algo'])['res'].mean().unstack()
-    # Calculating error (min and max)
-    # min_values = src.groupby(['workload', 'algo'])['min'].mean().unstack()
-    # max_values = src.groupby(['workload', 'algo'])['max'].mean().unstack()
-    # errors = np.stack([min_values.values, max_values.values], axis=2)
-    # errors = np.transpose(errors, (1, 2, 0))
 
     # Plotting the bar chart with error bars
     fig, ax = plt.subplots(figsize=(10, 6))
@@ -323,18 +343,20 @@ def main(workload_set):
     # 1. avg jct
     results_data = get_data_from_raw_log(workload_set, "avg_jct")
     df = pd.DataFrame(results_data)
-    print(df)
+    print(f">>> avg jct for {workload_set}:\n {df}")
     # print(get_markdown_table(df))
     plot_grouped_bar(df, workload_set, "Average JCT")
 
     # 2. p99 jct
     results_data = get_data_from_raw_log(workload_set, "p99_jct")
     df = pd.DataFrame(results_data)
+    print(f">>> p99 jct for {workload_set}:\n {df}")
     plot_grouped_bar(df, workload_set, "P99 JCT")
 
     # 3. Makespan
     results_data = get_data_from_raw_log(workload_set, "makespan")
     df = pd.DataFrame(results_data)
+    print(f">>> makespan for {workload_set}:\n {df}")
     plot_grouped_bar(df, workload_set, "Makespan")
 
     # 4. finish time fairness
@@ -344,7 +366,7 @@ def main(workload_set):
     ftf = calculate_ftf(real_jct, fair_jct)
     plot_cdf(ftf, workload_set)
 
-    #   4.1 FTF bar chart
+    #   4.2 avg FTF
     results_data = [
         {
             "workload": workload,
@@ -355,7 +377,36 @@ def main(workload_set):
         for algo, job in algo_data.items()
     ]
     df = pd.DataFrame(results_data)
-    plot_grouped_bar_with_error_bars(df, workload_set, "FTF")
+    print(f">>> avg ftf for {workload_set}:\n {df}")
+    plot_grouped_bar(df, workload_set, "Average FTF")
+
+    #   4.3 worst FTF
+    results_data = [
+        {
+            "workload": workload,
+            "algo": algo,
+            "res": max(job.values()),
+        }
+        for workload, algo_data in ftf.items()
+        for algo, job in algo_data.items()
+    ]
+    df = pd.DataFrame(results_data)
+    print(f">>> worst ftf for {workload_set}:\n {df}")
+    plot_grouped_bar(df, workload_set, "Worst FTF")
+
+    #   4.3 p99 FTF
+    results_data = [
+        {
+            "workload": workload,
+            "algo": algo,
+            "res": np.percentile([i for i in job.values()], 99)
+        }
+        for workload, algo_data in ftf.items()
+        for algo, job in algo_data.items()
+    ]
+    df = pd.DataFrame(results_data)
+    print(f">>> p99 ftf for {workload_set}:\n {df}")
+    plot_grouped_bar(df, workload_set, "P99 FTF")
 
     # # 5. visualize scheduling decision
     # results_data = get_scheduling_from_raw_log(workload_set)
