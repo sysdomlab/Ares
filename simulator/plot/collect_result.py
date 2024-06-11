@@ -245,6 +245,37 @@ def plot_grouped_bar_with_error_bars(src, wl_set, metric):
     print(f"finish plot {wl_set}/{metric}.jpg")
 
 
+def get_scheduling_data(log_file):
+    with open(log_file, 'r') as f:
+        log_data = f.read()
+        matches = re.findall(pattern=r'allocations:\s\{(.+?)\}', string=log_data, flags=re.MULTILINE)
+
+    task_flag = {
+        "cifar10": 1,
+        "ncf": 1,
+        "deepspeech2": 2,
+        "bert": 2,
+        "yolov3": 3,
+        "imagenet": 4,
+    }
+    num_machines, num_gpus_per_machine = 16, 4
+    data = np.zeros((len(matches), num_machines, num_gpus_per_machine), dtype=int)
+    for i, match in enumerate(matches):
+        match = eval("{" + match + "}")
+        # print(match)
+        available_gpus = {i: 0 for i in range(16)}
+        # print(available_gpus)
+        for task, gpu_config in match.items():
+            for gpu_id in gpu_config:
+                machine_id = int(gpu_id[0])
+                gpu_index = available_gpus[machine_id]
+                available_gpus[machine_id] += 1
+                # print(machine_id, gpu_index)
+                # print(match)
+                data[i, machine_id, gpu_index] = task_flag[task.split("-")[0]]
+    return data
+
+
 def get_scheduling_from_raw_log(wl_set):
     results_data = collections.defaultdict(dict)
     for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
@@ -252,35 +283,9 @@ def get_scheduling_from_raw_log(wl_set):
         algo = file.split("/")[-1].split(".")[0]
         # print(workload, file)
 
-        with open(file, 'r') as f:
-            log_data = f.read()
-            matches = re.findall(pattern=r'allocations:\s\{(.+?)\}', string=log_data, flags=re.MULTILINE)
+        res = get_scheduling_data(file)
 
-        task_flag = {
-            "cifar10": 1,
-            "ncf": 1,
-            "deepspeech2": 2,
-            "bert": 2,
-            "yolov3": 3,
-            "imagenet": 4,
-        }
-        num_machines, num_gpus_per_machine = 16, 4
-        data = np.zeros((len(matches), num_machines, num_gpus_per_machine), dtype=int)
-        for i, match in enumerate(matches):
-            match = eval("{" + match + "}")
-            # print(match)
-            available_gpus = {i: 0 for i in range(16)}
-            # print(available_gpus)
-            for task, gpu_config in match.items():
-                for gpu_id in gpu_config:
-                    machine_id = int(gpu_id[0])
-                    gpu_index = available_gpus[machine_id]
-                    available_gpus[machine_id] += 1
-                    # print(machine_id, gpu_index)
-                    # print(match)
-                    data[i, machine_id, gpu_index] = task_flag[task.split("-")[0]]
-
-        results_data[workload][algo] = data
+        results_data[workload][algo] = res
     return results_data
 
 
@@ -409,24 +414,24 @@ def main(workload_set):
     plot_grouped_bar(df, workload_set, "P99 FTF")
 
     # # 5. visualize scheduling decision
-    # results_data = get_scheduling_from_raw_log(workload_set)
-    # plot_scheduling(results_data, workload_set,
-    #                 wl_set_filter=[
-    #                     "workloads-0.5",
-    #                     "workloads-1.0",
-    #                     "workloads-1.5",
-    #                     "workloads-2.0",
-    #                     "workloads-realistic",
-    #                     "philly", "saturn", "newtrace"
-    #                 ],
-    #                 wl_filter=["1", "2", "3", "4", "5", "6", "7", "8"],
-    #                 algo_filter=[
-    #                     "ares",
-    #                     "optimus",
-    #                     "pollux",
-    #                     "tiresias",
-    #                     # "sjf"
-    #                 ])
+    results_data = get_scheduling_from_raw_log(workload_set)
+    plot_scheduling(results_data, workload_set,
+                    wl_set_filter=[
+                        "workloads-0.5",
+                        "workloads-1.0",
+                        "workloads-1.5",
+                        "workloads-2.0",
+                        "workloads-realistic",
+                        "philly", "saturn", "newtrace"
+                    ],
+                    wl_filter=["1", "2", "3", "4", "5", "6", "7", "8"],
+                    algo_filter=[
+                        "ares",
+                        "optimus",
+                        "pollux",
+                        "tiresias",
+                        # "sjf"
+                    ])
 
     pass
 

@@ -13,7 +13,7 @@ from time import sleep
 from matplotlib.patches import Patch
 
 from plot.collect_result import get_data_from_raw_log, get_all_jct_from_raw_log, get_fair_jct_from_raw_log, \
-    calculate_ftf, get_avg_jct, get_makespan, get_all_jct, calculate_ftf_in_algo, get_fair_jct
+    calculate_ftf, get_avg_jct, get_makespan, get_all_jct, calculate_ftf_in_algo, get_fair_jct, get_scheduling_data
 
 
 def plot_grouped_bar_v2(src, wl_set, metric, save_path):
@@ -57,7 +57,7 @@ def plot_grouped_bar_v2(src, wl_set, metric, save_path):
     print(f"finish plot {save_path}")
 
 
-def sim_all_jct_and_ftf(workload_set):
+def fig2_sim_all_jct_and_ftf(workload_set):
     # 1. avg jct
     results_data = get_data_from_raw_log(workload_set, "avg_jct")
     df = pd.DataFrame(results_data)
@@ -86,7 +86,7 @@ def sim_all_jct_and_ftf(workload_set):
 
 
 def plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data, save_path, ylabel='Average JCT (hrs)'):
-    fontsize = 34
+    fontsize = 32
     legend_fontsize = 30
     plt.style.use('default')
 
@@ -138,7 +138,7 @@ def plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data, save_path
     plt.show()
 
 
-def physical_jct_ftf_with_err_bar():
+def fig1_physical_jct_ftf_with_err_bar():
     testbed_path = "/home/cchen/yfliu/ares/bkp/14h/"
     simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
                        "SimulatorFidelity/workloads-4h-40j/workload-6/")
@@ -160,31 +160,31 @@ def physical_jct_ftf_with_err_bar():
                             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"jct_comparison"))
 
     # 2. FTF Comparison
-    # def compute_avg_ftf(a, b):
-    #     job_ftf = calculate_ftf_in_algo(
-    #         get_all_jct(a),
-    #         get_fair_jct(b)
-    #     )
-    #     return sum(job_ftf.values()) / len(job_ftf)
-    #
-    # ares_testbed_ftf = [compute_avg_ftf(testbed_path + f"ares/logs/ares_{i}.log", simulation_path + "ares.txt")
-    #                     for i in range(1, 4)]
-    # ares_simulation_ftf = [compute_avg_ftf(simulation_path + "ares.txt", simulation_path + "ares.txt")] * 3
-    # optimus_testbed_ftf = [compute_avg_ftf(testbed_path + f"optimus/logs/optimus_{i}.log", simulation_path + "ares.txt")
-    #                        for i in range(1, 4)]
-    # optimus_simulation_ftf = [compute_avg_ftf(simulation_path + "optimus.txt", simulation_path + "ares.txt")] * 3
-    # pollux_testbed_ftf = [compute_avg_ftf(testbed_path + f"pollux/logs/pollux_{i}.log", simulation_path + "ares.txt")
-    #                       for i in range(1, 4)]
-    # pollux_simulation_ftf = [compute_avg_ftf(simulation_path + "pollux.txt", simulation_path + "ares.txt")] * 3
-    # tiresias_testbed_ftf = [
-    #     compute_avg_ftf(testbed_path + f"tiresias/logs/tiresias_{i}.log", simulation_path + "ares.txt")
-    #     for i in range(1, 4)]
-    # tiresias_simulation_ftf = [compute_avg_ftf(simulation_path + "tiresias.txt", simulation_path + "ares.txt")] * 3
-    # testbed_jct_data = [ares_testbed_ftf, optimus_testbed_ftf, pollux_testbed_ftf, tiresias_testbed_ftf]
-    # simulation_jct_data = [ares_simulation_ftf, optimus_simulation_ftf, pollux_simulation_ftf, tiresias_simulation_ftf]
-    #
-    # plot_grouped_err_bar_v2(algorithms, testbed_jct_data, simulation_jct_data,
-    #                         os.path.join(os.path.abspath(os.path.dirname(__file__)), f"ftf_comparison"))
+    def compute_avg_ftf(a, b):
+        job_ftf = calculate_ftf_in_algo(
+            get_all_jct(a),
+            get_fair_jct(b)
+        )
+        return sum(job_ftf.values()) / len(job_ftf)
+
+    ares_testbed_ftf = [compute_avg_ftf(testbed_path + f"ares/logs/ares_{i}.log", simulation_path + "ares.txt")
+                        for i in range(1, 4)]
+    ares_simulation_ftf = [compute_avg_ftf(simulation_path + "ares.txt", simulation_path + "ares.txt")] * 3
+    optimus_testbed_ftf = [compute_avg_ftf(testbed_path + f"optimus/logs/optimus_{i}.log", simulation_path + "ares.txt")
+                           for i in range(1, 4)]
+    optimus_simulation_ftf = [compute_avg_ftf(simulation_path + "optimus.txt", simulation_path + "ares.txt")] * 3
+    pollux_testbed_ftf = [compute_avg_ftf(testbed_path + f"pollux/logs/pollux_{i}.log", simulation_path + "ares.txt")
+                          for i in range(1, 4)]
+    pollux_simulation_ftf = [compute_avg_ftf(simulation_path + "pollux.txt", simulation_path + "ares.txt")] * 3
+    tiresias_testbed_ftf = [
+        compute_avg_ftf(testbed_path + f"tiresias/logs/tiresias_{i}.log", simulation_path + "ares.txt")
+        for i in range(1, 4)]
+    tiresias_simulation_ftf = [compute_avg_ftf(simulation_path + "tiresias.txt", simulation_path + "ares.txt")] * 3
+    testbed_jct_data = [ares_testbed_ftf, optimus_testbed_ftf, pollux_testbed_ftf, tiresias_testbed_ftf]
+    simulation_jct_data = [ares_simulation_ftf, optimus_simulation_ftf, pollux_simulation_ftf, tiresias_simulation_ftf]
+
+    plot_grouped_err_bar_v2(algorithms, testbed_jct_data, simulation_jct_data,
+                            os.path.join(os.path.abspath(os.path.dirname(__file__)), f"ftf_comparison"))
 
     # 3. Makespan Comparison
     ares_testbed_makespan = [get_makespan(testbed_path + f"ares/logs/ares_{i}.log") for i in range(1, 4)]
@@ -204,8 +204,130 @@ def physical_jct_ftf_with_err_bar():
                             ylabel='Makespan (hrs)')
 
 
-def ftf_cdf():
+def plot_cdf(data, xlabel, save_path):
+    # >>> cdf plotting
+    fontsize = 21
+    legend_fontsize = 19
+    linewidth = 2
 
+    plt.figure(figsize=(10, 4))
+    plt.style.use('ggplot')
+    # print(wl_set)
+    for algorithm, job in data.items():
+        # print(f"workload-{workload}, {algorithm}: \t"
+        #       f"avg {sum(job.values()) / len(job):.2f}, max {max(job.values()):.2f}, min {min(job.values()):.2f}")
+        sorted_ftf_values = np.sort(list(job.values()))
+        print(sorted_ftf_values)
+        yvals = np.arange(len(sorted_ftf_values)) / float(len(sorted_ftf_values))
+        plt.plot(sorted_ftf_values, yvals, label=algorithm, linewidth=linewidth)
+
+    # plt.title(f"CDF of FTF for {wl_set}/workload-{workload}")
+    plt.xticks(fontsize=fontsize, color='black')
+    plt.yticks(fontsize=fontsize, color='black')
+    plt.xlabel(xlabel, fontsize=fontsize, color='black')
+    plt.ylabel("Fraction of Jobs", fontsize=fontsize, color='black')
+    plt.legend(
+        ncol=4,
+        loc='upper center',
+        bbox_to_anchor=(0.5, 1.15),
+        borderaxespad=0,
+        fontsize=legend_fontsize,
+        frameon=False
+    )
+    plt.xscale('log')
+    plt.tight_layout()  # Adjust layout to prevent clipping of labels
+    plt.savefig(save_path + ".pdf")
+    plt.savefig(save_path + ".png")
+    plt.show()
+    plt.clf()
+    print(f'finish plot {save_path}')
+
+
+def fig3_ftf_cdf():
+    simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
+                       "Simulation-16nodes/saturn/workload-2")
+    algorithms = ['Ares', 'Optimus', 'Pollux', 'Tiresias']
+    ftf_data = {
+        algo: calculate_ftf_in_algo(
+            get_all_jct(simulation_path + f"/{algo.lower()}.txt"),
+            get_fair_jct(simulation_path + "/ares.txt"),
+        )
+        for algo in algorithms
+    }
+    print(ftf_data)
+    plot_cdf(ftf_data, "Finish Time Fairness Ratio",
+             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"ftf_cdf"))
+
+    ftf_data = {
+        algo: {
+            job_name: jct / 3600
+            for job_name, jct in get_all_jct(simulation_path + f"/{algo.lower()}.txt").items()
+        }
+        for algo in algorithms
+    }
+    print(ftf_data)
+    plot_cdf(ftf_data, "Job Completion Time (hrs)",
+             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"jct_cdf"))
+
+
+def fig4_visualized_schedules():
+    simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
+                       "Simulation-16nodes/saturn/workload-2")
+    algorithms = ['Ares', 'Optimus', 'Pollux', 'Tiresias']
+    algo_data = {
+        algo: get_scheduling_data(simulation_path + f"/{algo.lower()}.txt")
+        for algo in algorithms
+    }
+
+    num_machines, num_gpus_per_machine = 16, 4
+    colors = ['#ffffff', '#a1daea', '#007db8', '#ffaa5b', '#e60018']
+    task_labels = ['Free', 'Small', 'Medium', 'Large', '(X)Large']
+
+    fig, axs = plt.subplots(2, 2, figsize=(32, 10))
+    axs = axs.flatten()
+    fontsize = 36
+    title_fontsize = 42
+    spine_width = 2
+
+    max_time_steps = max(len(algo_data[algo]) for algo in algorithms)
+    for ax, (algo, scheduling_data) in zip(axs, algo_data.items()):
+        time_steps = len(scheduling_data)
+
+        for gpu_id in range(num_machines * num_gpus_per_machine):
+            machine_id = gpu_id // num_gpus_per_machine
+            gpu_index = gpu_id % num_gpus_per_machine
+            for time_step in range(time_steps):
+                task_type = scheduling_data[time_step, machine_id, gpu_index]
+                color = colors[task_type]
+                ax.add_patch(plt.Rectangle((time_step, gpu_id), 1, 1, color=color, alpha=0.7))
+
+        ax.set_xlabel('Round', fontsize=fontsize)
+        ax.set_ylabel('GPU ID', fontsize=fontsize)
+        ax.set_xticks(range(0, max_time_steps + 1, 200))
+        ax.set_yticks(range(0, num_machines * num_gpus_per_machine + 1, num_gpus_per_machine * 8))
+        ax.tick_params(axis='x', labelsize=fontsize)
+        ax.tick_params(axis='y', labelsize=fontsize)
+        ax.set_title(f"{algo}", fontsize=title_fontsize, loc='right')
+
+        ax.set_xlim(0, max_time_steps)
+        ax.set_ylim(0, num_machines * num_gpus_per_machine)
+
+        # Set the spine width
+        for spine in ax.spines.values():
+            spine.set_linewidth(spine_width)
+
+    legend_patches = [Patch(color=color, label=label) for color, label in zip(colors[1:], task_labels[1:])]
+    fig.legend(handles=legend_patches,
+               loc='upper center',
+               bbox_to_anchor=(0.5, 1.025),
+               ncol=5,
+               fontsize=fontsize,
+               frameon=False)
+    plt.tight_layout(rect=[0, 0, 1, 0.94])
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"visualized_schedules") + ".pdf")
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"visualized_schedules") + ".png")
+    plt.show()
+    plt.clf()
 
 
 if __name__ == '__main__':
@@ -214,8 +336,8 @@ if __name__ == '__main__':
 
     # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
     workload_sets = ["philly", "saturn", "newtrace"]
-    # workload_sets = ["philly", "saturn"]
     # for workload_set in workload_sets:
-    #     sim_all_jct_and_ftf(workload_set)
-    # physical_jct_ftf_with_err_bar()
-    ftf_cdf()
+    #     fig2_sim_all_jct_and_ftf(workload_set)
+    # fig1_physical_jct_ftf_with_err_bar()
+    # fig3_ftf_cdf()
+    fig4_visualized_schedules()
