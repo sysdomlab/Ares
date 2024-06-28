@@ -93,7 +93,7 @@ def plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data, save_path
     testbed_jct_means = [np.mean(i) for i in testbed_data]
     simulation_jct_means = [np.mean(i) for i in simulation_data]
     diff = [abs(i - j) / i for i, j in zip(testbed_jct_means, simulation_jct_means)]
-    print(f"Fidelity of Shockwave’s simulator – difference between simulator and physical cluster: "
+    print(f"Fidelity of simulator – difference between simulator and physical cluster: "
           f"{np.mean(diff)}")
     # 计算误差条范围（最大值和最小值之间的范围）
     testbed_jct_errors = [[mean - min(data), max(data) - mean]
@@ -106,7 +106,7 @@ def plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data, save_path
     x = np.arange(len(algorithms))  # x 轴位置
     width = 0.35  # 柱子宽度
 
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(9, 6))
     rects1 = ax.bar(x - width / 2, testbed_jct_means, width, label='Real',
                     yerr=testbed_jct_errors, capsize=10, error_kw={'elinewidth': 2})
     rects2 = ax.bar(x + width / 2, simulation_jct_means, width, label='Simulated',
@@ -153,10 +153,17 @@ def fig1_physical_jct_ftf_with_err_bar():
     pollux_simulation_jct = [get_avg_jct(simulation_path + "pollux.txt")] * 3
     tiresias_testbed_jct = [get_avg_jct(testbed_path + f"tiresias/logs/tiresias_{i}.log") for i in range(1, 4)]
     tiresias_simulation_jct = [get_avg_jct(simulation_path + "tiresias.txt")] * 3
-    testbed_jct_data = [ares_testbed_jct, optimus_testbed_jct, pollux_testbed_jct, tiresias_testbed_jct]
-    simulation_jct_data = [ares_simulation_jct, optimus_simulation_jct, pollux_simulation_jct, tiresias_simulation_jct]
+    testbed_data = [ares_testbed_jct, optimus_testbed_jct, pollux_testbed_jct, tiresias_testbed_jct]
+    simulation_data = [ares_simulation_jct, optimus_simulation_jct, pollux_simulation_jct, tiresias_simulation_jct]
+    print(testbed_data)
+    print(simulation_data)
+    avg_data = [np.average(i) for i in testbed_data]
+    improvement = [(i - avg_data[0]) / i for i in avg_data]
+    print(avg_data)
+    print(improvement)
+    # input()
 
-    plot_grouped_err_bar_v2(algorithms, testbed_jct_data, simulation_jct_data,
+    plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data,
                             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"jct_comparison"))
 
     # 2. FTF Comparison
@@ -180,10 +187,12 @@ def fig1_physical_jct_ftf_with_err_bar():
         compute_avg_ftf(testbed_path + f"tiresias/logs/tiresias_{i}.log", simulation_path + "ares.txt")
         for i in range(1, 4)]
     tiresias_simulation_ftf = [compute_avg_ftf(simulation_path + "tiresias.txt", simulation_path + "ares.txt")] * 3
-    testbed_jct_data = [ares_testbed_ftf, optimus_testbed_ftf, pollux_testbed_ftf, tiresias_testbed_ftf]
-    simulation_jct_data = [ares_simulation_ftf, optimus_simulation_ftf, pollux_simulation_ftf, tiresias_simulation_ftf]
+    testbed_data = [ares_testbed_ftf, optimus_testbed_ftf, pollux_testbed_ftf, tiresias_testbed_ftf]
+    simulation_data = [ares_simulation_ftf, optimus_simulation_ftf, pollux_simulation_ftf, tiresias_simulation_ftf]
+    print(testbed_data)
+    print(simulation_data)
 
-    plot_grouped_err_bar_v2(algorithms, testbed_jct_data, simulation_jct_data,
+    plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data,
                             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"ftf_comparison"))
 
     # 3. Makespan Comparison
@@ -195,11 +204,18 @@ def fig1_physical_jct_ftf_with_err_bar():
     pollux_simulation_makespan = [get_makespan(simulation_path + "pollux.txt")] * 3
     tiresias_testbed_makespan = [get_makespan(testbed_path + f"tiresias/logs/tiresias_{i}.log") for i in range(1, 4)]
     tiresias_simulation_makespan = [get_makespan(simulation_path + "tiresias.txt")] * 3
-    testbed_makespan_data = [ares_testbed_makespan, optimus_testbed_makespan, pollux_testbed_makespan,
-                             tiresias_testbed_makespan]
-    simulation_makespan_data = [ares_simulation_makespan, optimus_simulation_makespan, pollux_simulation_makespan,
-                                tiresias_simulation_makespan]
-    plot_grouped_err_bar_v2(algorithms, testbed_makespan_data, simulation_makespan_data,
+    testbed_data = [ares_testbed_makespan, optimus_testbed_makespan, pollux_testbed_makespan,
+                    tiresias_testbed_makespan]
+    simulation_data = [ares_simulation_makespan, optimus_simulation_makespan, pollux_simulation_makespan,
+                       tiresias_simulation_makespan]
+    print(testbed_data)
+    print(simulation_data)
+    avg_data = [np.average(i) for i in testbed_data]
+    improvement = [(i - avg_data[0]) / i for i in avg_data]
+    print(avg_data)
+    print(improvement)
+
+    plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data,
                             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"makespan_comparison"),
                             ylabel='Makespan (hrs)')
 
@@ -338,6 +354,6 @@ if __name__ == '__main__':
     workload_sets = ["philly", "saturn", "newtrace"]
     # for workload_set in workload_sets:
     #     fig2_sim_all_jct_and_ftf(workload_set)
-    # fig1_physical_jct_ftf_with_err_bar()
+    fig1_physical_jct_ftf_with_err_bar()
     # fig3_ftf_cdf()
-    fig4_visualized_schedules()
+    # fig4_visualized_schedules()
