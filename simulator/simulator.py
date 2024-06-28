@@ -192,7 +192,8 @@ class Job(object):
 
 
 class Cluster(object):
-    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None):
+    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None,
+                 early_exit=None):
         assert 1 <= num_gpus <= 4
         self.workload_name = workload_name
         self.policy_name = policy_name
@@ -224,6 +225,8 @@ class Cluster(object):
         # gpu_alloc[(node_ip, gpu_id)] = [proc_name]
 
         self.logs = []
+        self.avg_overhead = 0
+        self.early_exit = early_exit
 
         # self.connects = {}
         # for node_ip in self.nodes:
@@ -338,7 +341,10 @@ class Cluster(object):
 
     def optimize(self, job_infos, node_infos, prev_allocations):
         # 算法选择
+        time1 = time.time()
         new_allocations, _ = self.policy.optimize(job_infos, node_infos, prev_allocations)
+        time2 = time.time()
+        self.avg_overhead = (self.avg_overhead * len(self.logs) + time2 - time1) / (len(self.logs) + 1)
         # shrink to <=8 nodes per job (Forcefully clean up fragments)
         if any(len(set(v)) > 8 for v in new_allocations.values()):
             num_replicas = {k: len(v) for k, v in new_allocations.items()}
@@ -350,12 +356,13 @@ class Cluster(object):
                 if num_replicas[key] > 0:
                     # Allocate resources.
                     allocations[key] = []
-                    while num_replicas[key] - len(allocations[key]) > 0:
-                        need_num = num_replicas[key] - len(allocations[key])
-                        if need_num >= 4 or need_num > total_gpus.most_common()[-1][1]:
-                            node_idx, count = total_gpus.most_common()[0]
-                        else:
-                            node_idx, count = total_gpus.most_common()[-1]
+                    while num_replicas[key] - len(allocations[key]) > 0 and len(set(allocations[key])) < 8:
+                        need_num = min(4, num_replicas[key] - len(allocations[key]))
+                        # 找到刚好剩余 need_num 个 GPU 的 node_idx，否则取新机器
+                        for k, v in total_gpus.most_common()[::-1]:
+                            node_idx, count = k, v
+                            if count >= need_num:
+                                break
                         num = min(count, need_num)
                         allocations[key].extend([node_idx] * num)
                         total_gpus[node_idx] -= num
@@ -484,6 +491,8 @@ class Cluster(object):
         while not self.all_complete():
             self.step()
             self.print_logs()
+            if self.early_exit and len(self.logs) == self.early_exit:
+                break
         if self.out_put is not None:
             self.output_logs()
 
@@ -496,6 +505,7 @@ class Cluster(object):
     def print_logs(self):
         entry = {
             "timestamp": self.current_time,
+            "overhead": self.avg_overhead,
             # "num_nodes": self.num_nodes,
             "used_gpus": sum(map(len, self.running_allocations.values())),
             "allocations": self.running_allocations,
@@ -532,6 +542,7 @@ class Cluster(object):
                       f"[batch size {val['batch_size']}]\t[placement {val['placement']}]")
         print(f"allocations: {entry['allocations']}")
         print(f"GPU utilization: {entry['used_gpus']}, Force shrink: {self.force_shrink}")
+        print(f"overhead: {entry['overhead']}")
         print(f"Completed jobs [{len(entry['jct'])}]:")
         print(entry['jct'])
         print("Average JCT:", entry["avg_jct"])
@@ -554,7 +565,9 @@ if __name__ == "__main__":
                         help="output all logs to a json file")
     parser.add_argument("--namespace", type=str, default=None,
                         help="the prefix of each job_name")
+    parser.add_argument('--early_exit', type=int, default=None)
     args = parser.parse_args()
 
-    cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace)
+    cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace,
+                      args.early_exit)
     cluster.run()
