@@ -352,16 +352,24 @@ def fig4_visualized_schedules():
 def overhead():
     workload_sets = ["scale_1x", "scale_2x", "scale_4x", "scale_8x", "scale_16x", "scale_32x"]
     gpu_size = ["64", "128", "256", "512", "1024", "2048"]
-    means = []
-    stds = []
+    medians = []
+    percentiles_25 = []
+    percentiles_75 = []
     for workload_set in workload_sets:
         results_data = get_data_from_raw_log(workload_set, "overhead")
         df = pd.DataFrame(results_data)
-        df = df.groupby(['workload', 'algo'])['res'].mean().unstack()["ares"]
-        mean_val = df.mean()
-        std_val = df.std()
-        means.append(mean_val)
-        stds.append(std_val)
+        df = df.groupby(['workload', 'algo'])['res'].median().unstack()["ares"]
+        median_val = df.median()
+        percentile_25_val = df.quantile(0.25)
+        percentile_75_val = df.quantile(0.75)
+        medians.append(median_val)
+        percentiles_25.append(percentile_25_val)
+        percentiles_75.append(percentile_75_val)
+
+    # 计算误差条
+    lower_errors = np.array(medians) - np.array(percentiles_25)
+    upper_errors = np.array(percentiles_75) - np.array(medians)
+    asymmetric_error = [lower_errors, upper_errors]
 
     # 绘制带误差条的折线图
     fontsize = 16
@@ -371,8 +379,7 @@ def overhead():
 
     plt.style.use('ggplot')
     plt.figure(figsize=(8, 3))
-    # plt.yscale('log')
-    plt.errorbar(gpu_size, means, yerr=stds, fmt='-o', capsize=5, capthick=2, elinewidth=2)
+    plt.errorbar(gpu_size, medians, yerr=asymmetric_error, fmt='-o', capsize=5, capthick=2, elinewidth=2)
     plt.xlabel('Cluster size (#GPUs)', fontsize=fontsize, color='black')
     plt.ylabel('Policy runtime (s)', fontsize=fontsize, color='black')
     plt.xticks(fontsize=fontsize, color='black')

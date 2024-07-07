@@ -28,8 +28,8 @@ def fig1():
     # 设置图的范围和标签
     plt.xlim(0, 5)
     plt.ylim(0, 2)
-    plt.xlabel('Time (s)', fontsize=fontsize, color='black')
-    plt.ylabel('Slot', fontsize=fontsize, color='black')
+    plt.xlabel('Time', fontsize=fontsize, color='black')
+    plt.ylabel('GPU #', fontsize=fontsize, color='black')
     plt.xticks(range(8), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5], [1, 2], fontsize=fontsize, color='black')
 
@@ -76,8 +76,8 @@ def fig2():
     # 设置图的范围和标签
     plt.xlim(0, 5)
     plt.ylim(0, 2)
-    plt.xlabel('Time (s)', fontsize=fontsize, color='black')
-    plt.ylabel('Slot', fontsize=fontsize, color='black')
+    plt.xlabel('Time', fontsize=fontsize, color='black')
+    plt.ylabel('GPU #', fontsize=fontsize, color='black')
     plt.xticks(range(8), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5], [1, 2], fontsize=fontsize, color='black')
 

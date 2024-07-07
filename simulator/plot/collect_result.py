@@ -69,6 +69,8 @@ def get_data_from_raw_log(wl_set, metric):
             res = get_p99_jct(file)
         elif metric == "makespan":
             res = get_makespan(file)
+        elif metric == "overhead":
+            res = get_overhead(file)
         else:
             raise ValueError(f"Invalid metric: {metric}")
 
@@ -189,6 +191,15 @@ def calculate_ftf(jct_data, fair_jct_data):
         workload: calculate_ftf_in_workload(jct_data[workload], fair_jct_data[workload])
         for workload in jct_data.keys()
     }
+
+
+def get_overhead(log_file):
+    res = 0
+    with open(log_file, 'r') as f:
+        for line in f:
+            if "overhead" in line:
+                res = float(line.split(":")[-1].strip())
+    return res
 
 
 def plot_cdf(data, wl_set):
@@ -344,94 +355,137 @@ def plot_scheduling(res_data, wl_set, wl_set_filter=None, wl_filter=None, algo_f
             print(f"finish plot {wl_set}/visualized_schedules_{workload}-{algo}.jpg")
 
 
-def main(workload_set):
-    # 1. avg jct
-    results_data = get_data_from_raw_log(workload_set, "avg_jct")
-    df = pd.DataFrame(results_data)
-    print(f">>> avg jct for {workload_set}:\n {df}")
-    # print(get_markdown_table(df))
-    plot_grouped_bar(df, workload_set, "Average JCT")
+def print_improve_reduce(df, metric=None, workload=None):
+    all_data = df.groupby(['workload', 'algo'])['res'].mean().unstack()
+    # algo          ares    optimus    pollux  tiresias
+    # workload
+    # 1         2.423574   7.878249  5.096774  4.152296
+    # 2         2.092625  12.310925  4.673776  3.871506
+    # 3         2.745866   4.307178  7.429548  5.203357
+    # 4         2.552085  10.905477  4.347999  4.211858
+    # 5         2.266543  12.184965  4.918089  5.266399
+    # 6         2.655891   9.536184  6.048757  4.587791
+    # 7         2.450645   8.420533  4.759959  4.374779
+    # 8         2.799517   9.711335  6.049760  6.416726
+    if workload is not None:
+        all_data = all_data.loc[[workload]]
+    if metric is None or "all" in metric:
+        print(f"all: \n{all_data}")
+    ares = all_data['ares']
+    improve = all_data.drop('ares', axis=1).sub(ares, axis=0).div(ares, axis=0).round(4)
+    reduce = all_data.drop('ares', axis=1).sub(ares, axis=0).div(all_data.drop('ares', axis=1), axis=0).round(4)
+    if metric is None or "improve" in metric:
+        print(f"improve: \n{improve}")
+    if metric is None or "reduce" in metric:
+        print(f"reduce: \n{reduce}")
+    # input()
+    return all_data, improve, reduce
 
+
+def get_workload_num(workload_set):
+    return {
+        "philly": "5",
+        "saturn": "3",
+        "newtrace": "6",
+    }[workload_set]
+
+
+def main(workload_set):
+    # # 1. avg jct
+    # results_data = get_data_from_raw_log(workload_set, "avg_jct")
+    # df = pd.DataFrame(results_data)
+    # print(f">>> avg jct for {workload_set}:\n {df}")
+    # all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
+    # print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
+    # # print(get_markdown_table(df))
+    # plot_grouped_bar(df, workload_set, "Average JCT")
+    #
     # 2. p99 jct
     results_data = get_data_from_raw_log(workload_set, "p99_jct")
     df = pd.DataFrame(results_data)
-    print(f">>> p99 jct for {workload_set}:\n {df}")
-    plot_grouped_bar(df, workload_set, "P99 JCT")
+    # print(f">>> p99 jct for {workload_set}:\n {df}")
+    all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
+    print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
+    # plot_grouped_bar(df, workload_set, "P99 JCT")
+    #
+    # # 3. Makespan
+    # results_data = get_data_from_raw_log(workload_set, "makespan")
+    # df = pd.DataFrame(results_data)
+    # print(f">>> makespan for {workload_set}:\n {df}")
+    # plot_grouped_bar(df, workload_set, "Makespan")
 
-    # 3. Makespan
-    results_data = get_data_from_raw_log(workload_set, "makespan")
-    df = pd.DataFrame(results_data)
-    print(f">>> makespan for {workload_set}:\n {df}")
-    plot_grouped_bar(df, workload_set, "Makespan")
-
-    # 4. finish time fairness
-    #   4.1 FTF CDF
-    real_jct = get_all_jct_from_raw_log(workload_set)
-    fair_jct = get_fair_jct_from_raw_log(workload_set)
-    ftf = calculate_ftf(real_jct, fair_jct)
-    plot_cdf(ftf, workload_set)
-
-    #   4.2 avg FTF
-    results_data = [
-        {
-            "workload": workload,
-            "algo": algo,
-            "res": sum(job.values()) / len(job),
-        }
-        for workload, algo_data in ftf.items()
-        for algo, job in algo_data.items()
-    ]
-    df = pd.DataFrame(results_data)
-    print(f">>> avg ftf for {workload_set}:\n {df}")
-    plot_grouped_bar(df, workload_set, "Average FTF")
+    # # 4. finish time fairness
+    # #   4.1 FTF CDF
+    # real_jct = get_all_jct_from_raw_log(workload_set)
+    # fair_jct = get_fair_jct_from_raw_log(workload_set)
+    # ftf = calculate_ftf(real_jct, fair_jct)
+    # # plot_cdf(ftf, workload_set)
+    #
+    # #   4.2 avg FTF
+    # results_data = [
+    #     {
+    #         "workload": workload,
+    #         "algo": algo,
+    #         "res": sum(job.values()) / len(job),
+    #     }
+    #     for workload, algo_data in ftf.items()
+    #     for algo, job in algo_data.items()
+    # ]
+    # df = pd.DataFrame(results_data)
+    # # print(f">>> avg ftf for {workload_set}:\n {df}")
+    # all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
+    # print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
+    # # plot_grouped_bar(df, workload_set, "Average FTF")
 
     #   4.3 worst FTF
-    results_data = [
-        {
-            "workload": workload,
-            "algo": algo,
-            "res": max(job.values()),
-        }
-        for workload, algo_data in ftf.items()
-        for algo, job in algo_data.items()
-    ]
-    df = pd.DataFrame(results_data)
-    print(f">>> worst ftf for {workload_set}:\n {df}")
-    plot_grouped_bar(df, workload_set, "Worst FTF")
-
-    #   4.3 p99 FTF
-    results_data = [
-        {
-            "workload": workload,
-            "algo": algo,
-            "res": np.percentile([i for i in job.values()], 99)
-        }
-        for workload, algo_data in ftf.items()
-        for algo, job in algo_data.items()
-    ]
-    df = pd.DataFrame(results_data)
-    print(f">>> p99 ftf for {workload_set}:\n {df}")
-    plot_grouped_bar(df, workload_set, "P99 FTF")
-
-    # # 5. visualize scheduling decision
-    results_data = get_scheduling_from_raw_log(workload_set)
-    plot_scheduling(results_data, workload_set,
-                    wl_set_filter=[
-                        "workloads-0.5",
-                        "workloads-1.0",
-                        "workloads-1.5",
-                        "workloads-2.0",
-                        "workloads-realistic",
-                        "philly", "saturn", "newtrace"
-                    ],
-                    wl_filter=["1", "2", "3", "4", "5", "6", "7", "8"],
-                    algo_filter=[
-                        "ares",
-                        "optimus",
-                        "pollux",
-                        "tiresias",
-                        # "sjf"
-                    ])
+    # results_data = [
+    #     {
+    #         "workload": workload,
+    #         "algo": algo,
+    #         "res": max(job.values()),
+    #     }
+    #     for workload, algo_data in ftf.items()
+    #     for algo, job in algo_data.items()
+    # ]
+    # df = pd.DataFrame(results_data)
+    # all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
+    # print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
+    # print(f">>> worst ftf for {workload_set}:\n {df}")
+    # plot_grouped_bar(df, workload_set, "Worst FTF")
+    #
+    # #   4.3 p99 FTF
+    # results_data = [
+    #     {
+    #         "workload": workload,
+    #         "algo": algo,
+    #         "res": np.percentile([i for i in job.values()], 99)
+    #     }
+    #     for workload, algo_data in ftf.items()
+    #     for algo, job in algo_data.items()
+    # ]
+    # df = pd.DataFrame(results_data)
+    # print(f">>> p99 ftf for {workload_set}:\n {df}")
+    # plot_grouped_bar(df, workload_set, "P99 FTF")
+    #
+    # # # 5. visualize scheduling decision
+    # results_data = get_scheduling_from_raw_log(workload_set)
+    # plot_scheduling(results_data, workload_set,
+    #                 wl_set_filter=[
+    #                     "workloads-0.5",
+    #                     "workloads-1.0",
+    #                     "workloads-1.5",
+    #                     "workloads-2.0",
+    #                     "workloads-realistic",
+    #                     "philly", "saturn", "newtrace"
+    #                 ],
+    #                 wl_filter=["1", "2", "3", "4", "5", "6", "7", "8"],
+    #                 algo_filter=[
+    #                     "ares",
+    #                     "optimus",
+    #                     "pollux",
+    #                     "tiresias",
+    #                     # "sjf"
+    #                 ])
 
     pass
 
