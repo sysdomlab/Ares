@@ -25,10 +25,11 @@ def predict_step_time(job, num_replicas):
 
 
 class ARESPolicy(object):
-    def __init__(self, time_fn, total_gpus):
+    def __init__(self, time_fn, total_gpus, threshold=0.75):
         self._time_fn = time_fn
         self.gps_sys = GPSSystem(time_fn(), total_gpus)
         self.allocations = {}
+        self.threshold = threshold
 
     def optimize(self,
                  jobs: Dict[Tuple[str, str], JobInfo],
@@ -60,7 +61,7 @@ class ARESPolicy(object):
                 continue
             desire_replicas = 0
             for i, (x, efficiency, speedup, d_speedup) in enumerate(self.gps_sys.fair_jobs[key]["scale_factor"]):
-                if efficiency >= 0.75:
+                if efficiency >= self.threshold:
                     desire_replicas = x
                 else:
                     break

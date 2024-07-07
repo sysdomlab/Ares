@@ -60,7 +60,7 @@ def get_data_from_raw_log(wl_set, metric):
     for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
         # 从文件名中提取工作负载和算法
         workload = file.split("/")[-2].split("-")[-1]
-        algo = file.split("/")[-1].split(".")[0]
+        algo = os.path.splitext(file.split("/")[-1])[0]
         # print(f"Workload: {workload}, Algorithm: {algo}")
 
         if metric == "avg_jct":

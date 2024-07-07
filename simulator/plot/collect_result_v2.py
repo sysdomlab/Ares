@@ -390,6 +390,77 @@ def overhead():
     plt.show()
 
 
+def sensitivity():
+    def get_val(_df, algo):
+        """
+        Helper function to calculate the median, 25th, and 75th percentiles
+        for a given algorithm within the dataframe.
+
+        Parameters:
+        _df (pd.DataFrame): The dataframe containing the data.
+        algo (str): The algorithm name to filter the dataframe.
+
+        Returns:
+        tuple: A tuple containing the median, 25th, and 75th percentiles.
+        """
+        # Group the dataframe by 'workload' and 'algo', calculate the mean of 'res' and unstack the dataframe
+        tmp_df = _df.groupby(['workload', 'algo'])['res'].mean().unstack()
+        print(tmp_df)
+        # Filter the dataframe for the given algorithm
+        tmp_df = tmp_df[algo]
+        # Return the median and the 25th and 75th percentiles
+        return tmp_df.median(), tmp_df.quantile(0.25), tmp_df.quantile(0.75)
+
+    # Define the sets of workloads to evaluate
+    workload_sets = ["philly", "saturn", "newtrace"]
+    workload_names = ["Philly", "Helios", "newTrace"]
+    markers = ['o', 's', '^']  # Different markers for each workload set
+
+    # Set the style and figure size for the plot
+    plt.style.use('ggplot')
+    plt.figure(figsize=(8, 3))
+    fontsize = 16
+
+    for workload_set, workload_name, marker in zip(workload_sets, workload_names, markers):
+        # Initialize lists to store median and percentile values
+        medians = []
+        percentiles_25 = []
+        percentiles_75 = []
+        # Retrieve data from raw log files
+        results_data = get_data_from_raw_log(workload_set, "avg_jct")
+        # Convert the results to a dataframe
+        df = pd.DataFrame(results_data)
+
+        # Iterate over the range of scalability thresholds
+        for i in np.arange(0.55, 1.0, 0.05):
+            # Get the median and percentile values for the current threshold
+            median_val, percentile_25_val, percentile_75_val = get_val(df, f"ares-{i:.2f}")
+            # Append the values to the respective lists
+            medians.append(median_val)
+            percentiles_25.append(percentile_25_val)
+            percentiles_75.append(percentile_75_val)
+
+        # Calculate the lower and upper errors for the error bars
+        lower_errors = np.array(medians) - np.array(percentiles_25)
+        upper_errors = np.array(percentiles_75) - np.array(medians)
+        asymmetric_error = [lower_errors, upper_errors]
+
+        # Plot the line with error bars
+        plt.errorbar(np.arange(0.55, 1.0, 0.05), medians, yerr=asymmetric_error, fmt=f'-{marker}', capsize=5,
+                     capthick=2, elinewidth=2, label=workload_name)
+
+    # Add labels to the plot
+    plt.xlabel('scalability control threshold', fontsize=fontsize, color='black')
+    plt.ylabel('Average JCT (hrs)', fontsize=fontsize, color='black')
+    plt.xticks(fontsize=fontsize, color='black')
+    plt.yticks(fontsize=fontsize, color='black')
+    plt.legend(fontsize=fontsize)  # Add legend for the different workload sets
+    plt.tight_layout()  # Adjust layout to prevent label cutoff
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"sensitivity.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"sensitivity.png"))
+    plt.show()
+
+
 if __name__ == '__main__':
     # nohup python3 collect_result.py > collect_result.log 2>&1 &
     os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-16nodes")
@@ -402,5 +473,8 @@ if __name__ == '__main__':
     # fig3_ftf_cdf()
     # fig4_visualized_schedules()
 
-    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-scale")
-    overhead()
+    # os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-scale")
+    # overhead()
+
+    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-sensitivity")
+    sensitivity()

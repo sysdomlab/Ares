@@ -193,7 +193,7 @@ class Job(object):
 
 class Cluster(object):
     def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None,
-                 early_exit=None):
+                 early_exit=None, ares_threshold=0.75):
         assert 1 <= num_gpus <= 4
         self.workload_name = workload_name
         self.policy_name = policy_name
@@ -216,6 +216,7 @@ class Cluster(object):
                 target_batch_size=APPLICATIONS[row.application].max_batch_size * random_scale(),
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
+        self.ares_threshold = ares_threshold
         self.policy = self.get_policy(policy_name)
         self.out_put = out_put
 
@@ -256,7 +257,7 @@ class Cluster(object):
         elif policy_name == "athena":
             return AthenaPolicy()
         elif policy_name == "ares":
-            return ARESPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes)
+            return ARESPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes, self.ares_threshold)
 
     def get_job_infos(self):
         job_infos = {}
@@ -349,11 +350,11 @@ class Cluster(object):
         if any(len(set(v)) > 8 for v in new_allocations.values()):
             num_replicas = {k: len(v) for k, v in new_allocations.items()}
             allocations = {}
-            job_keys = sorted(job_infos, key=lambda k: num_replicas[k], reverse=True)
+            job_keys = sorted(job_infos, key=lambda k: num_replicas.get(k, 0), reverse=True)
             total_gpus = {idx: int(node.resources['nvidia.com/gpu']) for idx, node in node_infos.items()}
             total_gpus = collections.Counter(total_gpus)
             for key in job_keys:
-                if num_replicas[key] > 0:
+                if num_replicas.get(key, 0) > 0:
                     # Allocate resources.
                     allocations[key] = []
                     while num_replicas[key] - len(allocations[key]) > 0 and len(set(allocations[key])) < 8:
@@ -566,8 +567,9 @@ if __name__ == "__main__":
     parser.add_argument("--namespace", type=str, default=None,
                         help="the prefix of each job_name")
     parser.add_argument('--early_exit', type=int, default=None)
+    parser.add_argument('--ares_threshold', type=float, default=0.6)
     args = parser.parse_args()
 
     cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace,
-                      args.early_exit)
+                      args.early_exit, args.ares_threshold)
     cluster.run()
