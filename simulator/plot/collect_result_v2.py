@@ -349,14 +349,51 @@ def fig4_visualized_schedules():
     plt.clf()
 
 
+def overhead():
+    workload_sets = ["scale_1x", "scale_2x", "scale_4x", "scale_8x", "scale_16x", "scale_32x"]
+    gpu_size = ["64", "128", "256", "512", "1024", "2048"]
+    means = []
+    stds = []
+    for workload_set in workload_sets:
+        results_data = get_data_from_raw_log(workload_set, "overhead")
+        df = pd.DataFrame(results_data)
+        df = df.groupby(['workload', 'algo'])['res'].mean().unstack()["ares"]
+        mean_val = df.mean()
+        std_val = df.std()
+        means.append(mean_val)
+        stds.append(std_val)
+
+    # 绘制带误差条的折线图
+    fontsize = 16
+    legend_fontsize = 19
+    linewidth = 2
+    markersize = 10
+
+    plt.style.use('ggplot')
+    plt.figure(figsize=(8, 3))
+    # plt.yscale('log')
+    plt.errorbar(gpu_size, means, yerr=stds, fmt='-o', capsize=5, capthick=2, elinewidth=2)
+    plt.xlabel('Cluster size (#GPUs)', fontsize=fontsize, color='black')
+    plt.ylabel('Policy runtime (s)', fontsize=fontsize, color='black')
+    plt.xticks(fontsize=fontsize, color='black')
+    plt.yticks(fontsize=fontsize, color='black')
+    plt.tight_layout()  # 调整布局以防止标签被裁剪
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"overhead.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"overhead.png"))
+    plt.show()
+
+
 if __name__ == '__main__':
     # nohup python3 collect_result.py > collect_result.log 2>&1 &
     os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-16nodes")
 
     # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
     workload_sets = ["philly", "saturn", "newtrace"]
-    for workload_set in workload_sets:
-        fig2_sim_all_jct_and_ftf(workload_set)
+    # for workload_set in workload_sets:
+    #     fig2_sim_all_jct_and_ftf(workload_set)
     # fig1_physical_jct_ftf_with_err_bar()
     # fig3_ftf_cdf()
     # fig4_visualized_schedules()
+
+    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-scale")
+    overhead()
