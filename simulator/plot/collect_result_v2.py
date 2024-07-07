@@ -13,7 +13,8 @@ from time import sleep
 from matplotlib.patches import Patch
 
 from plot.collect_result import get_data_from_raw_log, get_all_jct_from_raw_log, get_fair_jct_from_raw_log, \
-    calculate_ftf, get_avg_jct, get_makespan, get_all_jct, calculate_ftf_in_algo, get_fair_jct, get_scheduling_data
+    calculate_ftf, get_avg_jct, get_makespan, get_all_jct, calculate_ftf_in_algo, get_fair_jct, get_scheduling_data, \
+    print_improve_reduce
 
 
 def plot_grouped_bar_v2(src, wl_set, metric, save_path):
@@ -61,7 +62,8 @@ def fig2_sim_all_jct_and_ftf(workload_set):
     # 1. avg jct
     results_data = get_data_from_raw_log(workload_set, "avg_jct")
     df = pd.DataFrame(results_data)
-    print(df)
+    all_data, improve, reduce = print_improve_reduce(df, [])
+    print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
     plot_grouped_bar_v2(df, workload_set, "Average JCT(hrs)",
                         os.path.join(os.path.abspath(os.path.dirname(__file__)), f"{workload_set}-avg_jct"))
 
@@ -80,7 +82,8 @@ def fig2_sim_all_jct_and_ftf(workload_set):
         for algo, job in algo_data.items()
     ]
     df = pd.DataFrame(results_data)
-    print(df)
+    all_data, improve, reduce = print_improve_reduce(df, [])
+    print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
     plot_grouped_bar_v2(df, workload_set, "Average FTF",
                         os.path.join(os.path.abspath(os.path.dirname(__file__)), f"{workload_set}-avg_ftf"))
 
@@ -352,8 +355,8 @@ if __name__ == '__main__':
 
     # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
     workload_sets = ["philly", "saturn", "newtrace"]
-    # for workload_set in workload_sets:
-    #     fig2_sim_all_jct_and_ftf(workload_set)
-    fig1_physical_jct_ftf_with_err_bar()
+    for workload_set in workload_sets:
+        fig2_sim_all_jct_and_ftf(workload_set)
+    # fig1_physical_jct_ftf_with_err_bar()
     # fig3_ftf_cdf()
     # fig4_visualized_schedules()
