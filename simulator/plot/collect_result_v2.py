@@ -142,7 +142,7 @@ def plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data, save_path
 
 
 def fig1_physical_jct_ftf_with_err_bar():
-    testbed_path = "/home/cchen/yfliu/ares/bkp/14h/"
+    testbed_path = "/home/cchen/yfliu/ares/bkp/testbed/"
     simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
                        "SimulatorFidelity/workloads-4h-40j/workload-6/")
     algorithms = ['Ares', 'Optimus', 'Pollux', 'Tiresias']

@@ -25,12 +25,6 @@ from policy.athena import AthenaPolicy
 from policy.ares import ARESPolicy
 from policy.sjf import SJFPolicy
 
-np.random.seed(0)
-
-
-def random_scale():
-    return (np.random.randint(2) + 1) / 2
-
 
 def get_all_policies():
     return ["tiresias", "optimus", "pollux", "fifo", "sjf", "athena", "ares"]
@@ -170,7 +164,7 @@ class Cluster(object):
                 target_num_replicas=min(row.num_replicas,
                                         self.num_nodes * self.num_gpus,
                                         APPLICATIONS[row.application].max_num_replicas),
-                target_batch_size=APPLICATIONS[row.application].max_batch_size * random_scale(),
+                target_batch_size=row.batch_size,
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
         self.policy = self.get_policy(policy_name)
@@ -222,7 +216,7 @@ class Cluster(object):
                 elif isinstance(self.policy, PolluxPolicy):
                     job_infos[job.name] = self.get_pollux_job_info(job)
                 elif isinstance(self.policy, FIFOPolicy):
-                    job_infos[job.name] = self.get_optimus_job_info(job)
+                    job_infos[job.name] = self.get_tiresias_job_info(job)
                 elif isinstance(self.policy, SJFPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, AthenaPolicy):

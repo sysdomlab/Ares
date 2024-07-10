@@ -25,12 +25,6 @@ from policy.athena import AthenaPolicy
 from policy.ares import ARESPolicy
 from policy.sjf import SJFPolicy
 
-np.random.seed(0)
-
-
-def random_scale():
-    return (np.random.randint(2) + 1) / 2
-
 
 def get_all_policies():
     return ["tiresias", "optimus", "pollux", "fifo", "sjf", "athena", "ares"]
@@ -213,7 +207,7 @@ class Cluster(object):
                 target_num_replicas=min(row.num_replicas,
                                         self.num_nodes * self.num_gpus,
                                         APPLICATIONS[row.application].max_num_replicas),
-                target_batch_size=APPLICATIONS[row.application].max_batch_size * random_scale(),
+                target_batch_size=row.batch_size,
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
         self.ares_threshold = ares_threshold
@@ -270,7 +264,7 @@ class Cluster(object):
                 elif isinstance(self.policy, PolluxPolicy):
                     job_infos[job.name] = self.get_pollux_job_info(job)
                 elif isinstance(self.policy, FIFOPolicy):
-                    job_infos[job.name] = self.get_optimus_job_info(job)
+                    job_infos[job.name] = self.get_tiresias_job_info(job)
                 elif isinstance(self.policy, SJFPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, AthenaPolicy):
@@ -336,6 +330,40 @@ class Cluster(object):
             min_replicas=0,
             max_replicas=job.target_num_replicas,
         )
+
+    def get_gavel_job_info(self, job):
+        speedup_fns = {cname: job.get_speedup_fn(cname) for cname in self.clusters}
+        max_replicas = {cname: min(max(2 * job.max_profiled_replicas(cname), 1), 64,  # simulator can't handle more.
+                        job.applications[cname].max_batch_size // job.applications[cname].min_local_bsz)
+                        for cname in self.clusters}
+        job_info = JobInfo(
+            resources={"nvidia.com/gpu": 1},
+            speedup_fn=speedup_fns,
+            creation_timestamp=job.submission_time,
+            attained_service=job.attained_service,
+            min_replicas={cname: 0 for cname in self.clusters},
+            # max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
+            #                 job.target_batch_size // job.application.min_local_bsz),
+            max_replicas=max_replicas,
+            preemptible=True,
+        )
+        for cname, capp in job.applications.items():
+            if capp.name == "ncf":
+                job_info.max_replicas[cname] = 1
+        job_info.applications = job.applications
+        job_info.epoch = job.epoch
+        job_info.target_batch_size = job.target_batch_size
+        job_info.scale_factor = job.target_num_replicas
+        job_info.age = self.current_time - job.submission_time
+        job_app = list(job.applications.values())[0]
+        job_info.cur_step = job_app.get_cur_iteration(job.target_batch_size, job.epoch, job.progress)
+        job_info.total_steps = job_app.get_iteration(job.target_batch_size, job.completion_epoch)
+        job_info.remain_steps = max(1, job_info.total_steps - job_info.cur_step)
+        job_info.rescale_time = job_app.rescale_time
+        job_info.submission_time = job.submission_time
+        job_info.slowdown_factor = job.calibration_factor
+        assert job_app.rescale_time > 0
+        return job_info
 
     def all_complete(self):
         return all(job.completion_time is not None for job in self.jobs.values())
@@ -551,7 +579,7 @@ class Cluster(object):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--workload", type=str, default="./workload/philly/workload-3.csv",
+    parser.add_argument("--workload", type=str, default="./workload/philly/workload-1.csv",
                         help="path to workload csv")
     parser.add_argument("--policy", type=str, default="ares", choices=get_all_policies(),
                         help="scheduler policy")
@@ -567,7 +595,7 @@ if __name__ == "__main__":
     parser.add_argument("--namespace", type=str, default=None,
                         help="the prefix of each job_name")
     parser.add_argument('--early_exit', type=int, default=None)
-    parser.add_argument('--ares_threshold', type=float, default=0.6)
+    parser.add_argument('--ares_threshold', type=float, default=0.75)
     args = parser.parse_args()
 
     cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace,
