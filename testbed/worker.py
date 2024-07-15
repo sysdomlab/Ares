@@ -49,9 +49,15 @@ class Worker(object):
             os.makedirs(out_dir, exist_ok=True)
 
         print(f"Running proc {proc_name} on GPU {gpu_id}")
+        interface = "ibs5"
         with open(out_file, "w") as f:
             proc = subprocess.Popen(cmd,
-                                    env={"CUDA_VISIBLE_DEVICES": gpu_id},
+                                    env={
+                                        "CUDA_VISIBLE_DEVICES": gpu_id,
+                                        "GLOO_SOCKET_IFNAME": interface,
+                                        "TP_SOCKET_IFNAME": interface,
+                                        "NCLL_SOCKET_IFNAME": interface,
+                                    },
                                     stdout=f,
                                     stderr=f)
 
