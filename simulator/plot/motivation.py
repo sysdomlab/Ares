@@ -1,4 +1,5 @@
 import os
+import re
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -109,5 +110,97 @@ def fig2():
     plt.show()
 
 
-fig1()
-fig2()
+def get_metric(exp, metric="cer"):
+    for i in ["-seed0", "-seed1234", "-seed6666"]:
+        try:
+            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{i}/restart_0_rank_0.log"
+            with open(file_path, "r") as f:
+                text = f.read()
+        except FileNotFoundError:
+            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{i}/rank_0.log"
+            with open(file_path, "r") as f:
+                text = f.read()
+        pattern = r"Finish Epoch (\d+).*?" + metric + r"=([\d.]+)"
+
+        matches = re.findall(pattern, text)
+
+        epochs = []
+        cers = []
+
+        for match in matches:
+            epoch, cer = match
+            epochs.append(int(epoch))
+            cers.append(float(cer) / 100)
+            # print(f"Epoch: {epoch}, cer: {cer}")
+
+        print(cers)
+        input()
+
+    return epochs, cers
+
+
+def fig3():
+    app = {
+        "deepspeech2-1": "32-GPU",
+        "deepspeech2-2": "16-GPU",
+        "deepspeech2-3": "8-GPU",
+        "deepspeech2-4": "4-GPU",
+    }
+
+    fontsize = 32
+    legend_fontsize = 19
+    linewidth = 2
+    markersize = 10
+    plt.figure(figsize=(8, 7))
+    plt.style.use('ggplot')
+    for i in app:
+        # file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{i}/restart_0_rank_0.log"
+        epochs, metrics = get_metric(i)
+        print(f"{i} {app[i]}, Epoch: {epochs[-1]}, cer: {metrics[-1]}")
+        plt.plot(epochs, metrics, marker='o', label=app[i])
+
+    plt.xlabel('Epoch', fontsize=fontsize, color='black')
+    plt.ylabel('Character Error Rate', fontsize=fontsize, color='black')
+    plt.xticks(fontsize=fontsize, color='black')
+    plt.yticks(fontsize=fontsize, color='black')
+    plt.legend(fontsize=legend_fontsize)
+    plt.tight_layout()
+    # plt.savefig("cer_vs_epoch.png")
+    plt.show()
+
+
+    app = {
+        "imagenet-4": "32-GPU",
+        "imagenet-3": "16-GPU",
+        "imagenet-2": "8-GPU",
+        "imagenet-1": "4-GPU",
+    }
+
+    fontsize = 32
+    legend_fontsize = 19
+    linewidth = 2
+    markersize = 10
+    plt.figure(figsize=(8, 7))
+    plt.style.use('ggplot')
+    for i in app:
+        # file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{i}/restart_0_rank_0.log"
+        epochs, metrics = get_metric(i, "accuracy5")
+        print(f"{i} {app[i]}, Epoch: {epochs[-1]}, accuracy5: {metrics[-1]}")
+        plt.plot(epochs, metrics, marker='o', label=app[i])
+
+    plt.xlabel('Epoch', fontsize=fontsize, color='black')
+    plt.ylabel('Top-5 Accuracy', fontsize=fontsize, color='black')
+    plt.xticks(fontsize=fontsize, color='black')
+    plt.yticks(fontsize=fontsize, color='black')
+    plt.legend(fontsize=legend_fontsize)
+    plt.tight_layout()
+    # plt.savefig("cer_vs_epoch.png")
+    plt.show()
+
+
+if __name__ == '__main__':
+    # 调度示意图
+    # fig1()
+    # fig2()
+    # 内生弹性精度
+    fig3()
