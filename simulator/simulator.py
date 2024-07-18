@@ -13,6 +13,7 @@ import pandas
 # from models.tool import get_cmd
 # from models.env import get_checkpoint_path
 from policy.applications import APPLICATIONS
+from policy.gavel import GavelPolicy
 from policy.goodput import GoodputFunction, fit_perf_params
 from policy.speedup import SpeedupFunction
 from policy.utils import JobInfo, NodeInfo
@@ -23,11 +24,12 @@ from policy.tiresias import TiresiasPolicy
 from policy.fifo import FIFOPolicy
 from policy.athena import AthenaPolicy
 from policy.ares import ARESPolicy
-from policy.sjf import SJFPolicy
+from policy.srjf import SRJFPolicy
+from policy.utils_gavel import get_gavel_policies
 
 
 def get_all_policies():
-    return ["tiresias", "optimus", "pollux", "fifo", "sjf", "athena", "ares"]
+    return ["tiresias", "optimus", "pollux", "fifo", "srjf", "athena", "ares"] + get_gavel_policies()
 
 
 class Job(object):
@@ -246,12 +248,14 @@ class Cluster(object):
             return PolluxPolicy()
         elif policy_name == "fifo":
             return FIFOPolicy()
-        elif policy_name == "sjf":
-            return SJFPolicy()
+        elif policy_name == "srjf":
+            return SRJFPolicy()
         elif policy_name == "athena":
             return AthenaPolicy()
         elif policy_name == "ares":
             return ARESPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes, self.ares_threshold)
+        elif policy_name in get_gavel_policies():
+            return GavelPolicy(args.interval, self.nodes, policy=policy_name)
 
     def get_job_infos(self):
         job_infos = {}
@@ -265,12 +269,14 @@ class Cluster(object):
                     job_infos[job.name] = self.get_pollux_job_info(job)
                 elif isinstance(self.policy, FIFOPolicy):
                     job_infos[job.name] = self.get_tiresias_job_info(job)
-                elif isinstance(self.policy, SJFPolicy):
-                    job_infos[job.name] = self.get_optimus_job_info(job)
+                elif isinstance(self.policy, SRJFPolicy):
+                    job_infos[job.name] = self.get_tiresias_job_info(job)
                 elif isinstance(self.policy, AthenaPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, ARESPolicy):
                     job_infos[job.name] = self.get_ares_job_info(job)
+                elif isinstance(self.policy, GavelPolicy):
+                    job_infos[job.name] = self.get_gavel_job_info(job)
         return job_infos
 
     def get_node_infos(self):
@@ -322,7 +328,7 @@ class Cluster(object):
         return job_info
 
     def get_tiresias_job_info(self, job):
-        return JobInfo(
+        job_info = JobInfo(
             resources={"nvidia.com/gpu": 1},
             speedup_fn=None,
             creation_timestamp=job.submission_time,
@@ -330,39 +336,43 @@ class Cluster(object):
             min_replicas=0,
             max_replicas=job.target_num_replicas,
         )
+        job_info.application = job.application
+        job_info.target_batch_size = job.target_batch_size
+        job_info.epoch = job.epoch
+        return job_info
 
-    def get_gavel_job_info(self, job):
-        speedup_fns = {cname: job.get_speedup_fn(cname) for cname in self.clusters}
-        max_replicas = {cname: min(max(2 * job.max_profiled_replicas(cname), 1), 64,  # simulator can't handle more.
-                        job.applications[cname].max_batch_size // job.applications[cname].min_local_bsz)
-                        for cname in self.clusters}
+    def get_gavel_job_info(self, job: Job):
         job_info = JobInfo(
             resources={"nvidia.com/gpu": 1},
-            speedup_fn=speedup_fns,
+            speedup_fn=job.get_speedup_fn(),
             creation_timestamp=job.submission_time,
             attained_service=job.attained_service,
-            min_replicas={cname: 0 for cname in self.clusters},
-            # max_replicas=min(max(2 * job.max_profiled_replicas, 1), 64,  # simulator can't handle more.
-            #                 job.target_batch_size // job.application.min_local_bsz),
-            max_replicas=max_replicas,
-            preemptible=True,
+            min_replicas=0,
+            max_replicas=job.target_num_replicas,
         )
-        for cname, capp in job.applications.items():
-            if capp.name == "ncf":
-                job_info.max_replicas[cname] = 1
-        job_info.applications = job.applications
+        job_info.application = job.application
         job_info.epoch = job.epoch
         job_info.target_batch_size = job.target_batch_size
         job_info.scale_factor = job.target_num_replicas
         job_info.age = self.current_time - job.submission_time
-        job_app = list(job.applications.values())[0]
-        job_info.cur_step = job_app.get_cur_iteration(job.target_batch_size, job.epoch, job.progress)
-        job_info.total_steps = job_app.get_iteration(job.target_batch_size, job.completion_epoch)
-        job_info.remain_steps = max(1, job_info.total_steps - job_info.cur_step)
-        job_info.rescale_time = job_app.rescale_time
         job_info.submission_time = job.submission_time
-        job_info.slowdown_factor = job.calibration_factor
-        assert job_app.rescale_time > 0
+
+        total_progress = job.application.get_progress(job.application.max_epochs)
+        cur_process = job.progress
+        scale = job.target_batch_size / job.application.init_batch_size
+
+        job_info.cur_step = cur_process / scale
+        job_info.total_steps = total_progress / scale
+        job_info.remain_steps = max(1, job_info.total_steps - job_info.cur_step)
+        job_info.rescale_time = {
+            "bert": 120,
+            "cifar10": 50,
+            "deepspeech2": 25,
+            "imagenet": 250,
+            "ncf": 15,
+            "yolov3": 80,
+        }[job_info.application.name]
+        # job_info.slowdown_factor = job.calibration_factor
         return job_info
 
     def all_complete(self):
@@ -425,7 +435,7 @@ class Cluster(object):
     def step(self):
         self.current_time += self.interval
         for job in self.jobs.values():
-            job.step()
+            job.step(seconds=self.interval)
         job_infos = self.get_job_infos()
         node_infos = self.get_node_infos()
         # 过滤已完成的任务
@@ -520,6 +530,7 @@ class Cluster(object):
         while not self.all_complete():
             self.step()
             self.print_logs()
+            # input("Press Enter to continue...")
             if self.early_exit and len(self.logs) == self.early_exit:
                 break
         if self.out_put is not None:
@@ -581,12 +592,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, default="./workload/philly/workload-1.csv",
                         help="path to workload csv")
-    parser.add_argument("--policy", type=str, default="ares", choices=get_all_policies(),
+    parser.add_argument("--policy", type=str, default="gandiva", choices=get_all_policies(),
                         help="scheduler policy")
     parser.add_argument("--nodes", type=str,
                         default=" ".join([f"{i}" for i in range(16)]),
                         help="list of node IPs")
-    parser.add_argument("--interval", type=int, default=60,
+    parser.add_argument("--interval", type=int, default=360,
                         help="scheduling interval in seconds")
     parser.add_argument("--num-gpus", type=int, default=4,
                         help="number of GPUs per node")

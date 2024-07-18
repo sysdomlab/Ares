@@ -43,7 +43,8 @@ class Application(object):
     def __init__(self, trace_dir,
                  init_batch_size=None, max_batch_size=None,
                  min_local_bsz=None, max_local_bsz=None,
-                 max_epochs=None, target_metric=None):
+                 max_epochs=None, target_metric=None,
+                 slowdown_factor=0):
         self.name = os.path.basename(trace_dir)
         validation = {}
         for path in glob.glob(os.path.join(trace_dir, "validation-*.csv")):
@@ -66,6 +67,7 @@ class Application(object):
         self.max_epochs = max_epochs or min(map(len, self.validation.values()))
         self.target_metric = target_metric
         self.max_num_replicas = self.scalability.num_replicas.max()
+        self.slowdown_factor = slowdown_factor
 
     def _validated_batch_sizes(self, batch_size):
         # Find the lower-bound and upper-bound batch sizes (may be the same).
@@ -249,16 +251,18 @@ class Application(object):
             ret = interpolator([num_nodes, num_replicas, local_bsz])[0]
         # print(f">>> ret: {ret}")
         assert sum(ret) == sum(ret), "{} {} {}".format(self.name, placement, local_bsz)
-        return ret
+        step_time, sync_time = ret
+        step_time = step_time / (1 - self.slowdown_factor)
+        return step_time, sync_time
 
 
 performance_profiling = "2080ti"  # "2080ti"  # g4dn12xlarge
 TRACES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), f"traces/{performance_profiling}")
 APPLICATIONS = {
-    "bert": Application(os.path.join(TRACES_DIR, "bert"), max_epochs=2),
-    "cifar10": Application(os.path.join(TRACES_DIR, "cifar10"), max_epochs=100),
-    "ncf": Application(os.path.join(TRACES_DIR, "ncf"), max_epochs=10),
-    "imagenet": Application(os.path.join(TRACES_DIR, "imagenet"), max_epochs=90, max_local_bsz=75),
-    "deepspeech2": Application(os.path.join(TRACES_DIR, "deepspeech2"), max_epochs=80),
-    "yolov3": Application(os.path.join(TRACES_DIR, "yolov3"), max_epochs=50, max_local_bsz=12),
+    "bert": Application(os.path.join(TRACES_DIR, "bert"), max_epochs=2, slowdown_factor=0),
+    "cifar10": Application(os.path.join(TRACES_DIR, "cifar10"), max_epochs=100, slowdown_factor=0),
+    "ncf": Application(os.path.join(TRACES_DIR, "ncf"), max_epochs=10, slowdown_factor=0),
+    "imagenet": Application(os.path.join(TRACES_DIR, "imagenet"), max_epochs=90, max_local_bsz=75, slowdown_factor=0),
+    "deepspeech2": Application(os.path.join(TRACES_DIR, "deepspeech2"), max_epochs=80, slowdown_factor=0),
+    "yolov3": Application(os.path.join(TRACES_DIR, "yolov3"), max_epochs=50, max_local_bsz=12, slowdown_factor=0),
 }

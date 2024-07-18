@@ -13,6 +13,7 @@ from framework import load_job_state
 from models.tool import get_cmd
 from models.env import get_checkpoint_path
 from policy.applications import APPLICATIONS
+from policy.gavel import GavelPolicy
 from policy.goodput import GoodputFunction, fit_perf_params
 from policy.speedup import SpeedupFunction
 from policy.utils import JobInfo, NodeInfo
@@ -23,11 +24,12 @@ from policy.tiresias import TiresiasPolicy
 from policy.fifo import FIFOPolicy
 from policy.athena import AthenaPolicy
 from policy.ares import ARESPolicy
-from policy.sjf import SJFPolicy
+from policy.srjf import SRJFPolicy
+from policy.utils_gavel import get_gavel_policies
 
 
 def get_all_policies():
-    return ["tiresias", "optimus", "pollux", "fifo", "sjf", "athena", "ares"]
+    return ["tiresias", "optimus", "pollux", "fifo", "srjf", "athena", "ares"] + get_gavel_policies()
 
 
 class Job(object):
@@ -49,6 +51,7 @@ class Job(object):
         self.epoch = 0
         self.attained_service = 0
         self.num_restarts = None
+        self.progress = 0
 
     @property
     def max_profiled_replicas(self):
@@ -112,6 +115,7 @@ class Job(object):
         self.attained_service += elapse_time * sum(self.placement)
         # 查询是否结束
         job_state = load_job_state(self.name)  # 获取进度
+        self.progress = job_state["epoch"] * self.application.get_progress(1)
         self.epoch, completed = int(job_state["epoch"]), job_state["completed"]
         placement = tuple(filter(None, self.placement))
         num_nodes, num_replicas = len(placement), sum(placement)
@@ -134,20 +138,22 @@ class Job(object):
 
     def reallocate(self, placement):
         if placement:
+            if len(placement) != len(self.placement):
+                # ignore re-allocating delay if it is caused by the limit of profiling
+                self.num_restarts = self.num_restarts + 1 if self.num_restarts is not None else 0
             self.placement = tuple(placement)
             self.update_local_bsz(self.placement)
-            if self.num_restarts is None:
-                self.num_restarts = 0
-            else:
-                self.num_restarts += 1
         else:  # De-allocate all resources.
             self.placement = ()
             self.atomic_bsz = 0
 
 
 class Cluster(object):
-    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None):
+    def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None,
+                 early_exit=None, ares_threshold=0.75):
         assert 1 <= num_gpus <= 4
+        self.workload_name = workload_name
+        self.policy_name = policy_name
         self.nodes = nodes.split(" ")
         self.num_nodes = len(self.nodes)
         self.num_gpus = num_gpus
@@ -167,6 +173,7 @@ class Cluster(object):
                 target_batch_size=row.batch_size,
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
+        self.ares_threshold = ares_threshold
         self.policy = self.get_policy(policy_name)
         self.out_put = out_put
 
@@ -176,11 +183,15 @@ class Cluster(object):
         # gpu_alloc[(node_ip, gpu_id)] = [proc_name]
 
         self.logs = []
+        self.avg_overhead = 0
+        self.early_exit = early_exit
 
         self.connects = {}
         for node_ip in self.nodes:
             self.connects[node_ip] = zerorpc.Client()
             self.connects[node_ip].connect(f"tcp://{node_ip}:4242")
+
+        self.force_shrink = 0
 
     def get_free_gpu(self, node):
         for i in range(self.num_gpus):
@@ -198,12 +209,14 @@ class Cluster(object):
             return PolluxPolicy()
         elif policy_name == "fifo":
             return FIFOPolicy()
-        elif policy_name == "sjf":
-            return SJFPolicy()
+        elif policy_name == "srjf":
+            return SRJFPolicy()
         elif policy_name == "athena":
             return AthenaPolicy()
         elif policy_name == "ares":
-            return ARESPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes)
+            return ARESPolicy(lambda: self.current_time, self.num_gpus * self.num_nodes, self.ares_threshold)
+        elif policy_name in get_gavel_policies():
+            return GavelPolicy(args.interval, self.nodes, policy=policy_name)
 
     def get_job_infos(self):
         job_infos = {}
@@ -217,12 +230,14 @@ class Cluster(object):
                     job_infos[job.name] = self.get_pollux_job_info(job)
                 elif isinstance(self.policy, FIFOPolicy):
                     job_infos[job.name] = self.get_tiresias_job_info(job)
-                elif isinstance(self.policy, SJFPolicy):
+                elif isinstance(self.policy, SRJFPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, AthenaPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, ARESPolicy):
                     job_infos[job.name] = self.get_ares_job_info(job)
+                elif isinstance(self.policy, GavelPolicy):
+                    job_infos[job.name] = self.get_gavel_job_info(job)
         return job_infos
 
     def get_node_infos(self):
@@ -283,12 +298,79 @@ class Cluster(object):
             max_replicas=job.target_num_replicas,
         )
 
+    def get_gavel_job_info(self, job: Job):
+        job_info = JobInfo(
+            resources={"nvidia.com/gpu": 1},
+            speedup_fn=job.get_speedup_fn(),
+            creation_timestamp=job.submission_time,
+            attained_service=job.attained_service,
+            min_replicas=0,
+            max_replicas=job.target_num_replicas,
+        )
+        job_info.application = job.application
+        job_info.epoch = job.epoch
+        job_info.target_batch_size = job.target_batch_size
+        job_info.scale_factor = job.target_num_replicas
+        job_info.age = self.current_time - job.submission_time
+        job_info.submission_time = job.submission_time
+
+        total_progress = job.application.get_progress(job.application.max_epochs)
+        cur_process = job.progress
+        scale = job.target_batch_size / job.application.init_batch_size
+
+        job_info.cur_step = cur_process / scale
+        job_info.total_steps = total_progress / scale
+        job_info.remain_steps = max(1, job_info.total_steps - job_info.cur_step)
+        job_info.rescale_time = {
+            "bert": 120,
+            "cifar10": 50,
+            "deepspeech2": 25,
+            "imagenet": 250,
+            "ncf": 15,
+            "yolov3": 80,
+        }[job_info.application.name]
+        # job_info.slowdown_factor = job.calibration_factor
+        return job_info
+
     def all_complete(self):
         return all(job.completion_time is not None for job in self.jobs.values())
 
     def optimize(self, job_infos, node_infos, prev_allocations):
         # 算法选择
+        time1 = time.time()
         new_allocations, _ = self.policy.optimize(job_infos, node_infos, prev_allocations)
+        time2 = time.time()
+        self.avg_overhead = (self.avg_overhead * len(self.logs) + time2 - time1) / (len(self.logs) + 1)
+        # shrink to <=8 nodes per job (Forcefully clean up fragments)
+        if any(len(set(v)) > 8 for v in new_allocations.values()):
+            num_replicas = {k: len(v) for k, v in new_allocations.items()}
+            allocations = {}
+            job_keys = sorted(job_infos, key=lambda k: num_replicas.get(k, 0), reverse=True)
+            total_gpus = {idx: int(node.resources['nvidia.com/gpu']) for idx, node in node_infos.items()}
+            total_gpus = collections.Counter(total_gpus)
+            for key in job_keys:
+                if num_replicas.get(key, 0) > 0:
+                    # Allocate resources.
+                    allocations[key] = []
+                    while num_replicas[key] - len(allocations[key]) > 0 and len(set(allocations[key])) < 8:
+                        need_num = min(4, num_replicas[key] - len(allocations[key]))
+                        # 找到刚好剩余 need_num 个 GPU 的 node_idx，否则取新机器
+                        for k, v in total_gpus.most_common()[::-1]:
+                            node_idx, count = k, v
+                            if count >= need_num:
+                                break
+                        num = min(count, need_num)
+                        allocations[key].extend([node_idx] * num)
+                        total_gpus[node_idx] -= num
+                        if total_gpus[node_idx] == 0:
+                            del total_gpus[node_idx]
+            new_allocations = allocations
+            self.force_shrink += 1
+        num_replicas = {k: len(v) for k, v in new_allocations.items()}
+        assert not any(len(set(v)) > 8 for v in new_allocations.values()), \
+            (f"{self.policy_name} in {self.workload_name}: \n"
+             f"{new_allocations}\n"
+             f"{num_replicas}")
         # 检查合法性
         for k in new_allocations.keys():
             new_allocations[k] = sorted(new_allocations[k])
@@ -418,7 +500,8 @@ class Cluster(object):
     def print_logs(self):
         entry = {
             "timestamp": self.current_time,
-            "num_nodes": self.num_nodes,
+            "overhead": self.avg_overhead,
+            # "num_nodes": self.num_nodes,
             "used_gpus": sum(map(len, self.running_allocations.values())),
             "allocations": self.running_allocations,
             "submitted_jobs": [
@@ -433,7 +516,7 @@ class Cluster(object):
                     "accum_steps": job.accum_steps,
                     "submission_time": job.submission_time,
                     "completion_time": job.completion_time,
-                    "grad_params": job.grad_params,
+                    # "grad_params": job.grad_params,
                     "attained_service": job.attained_service,
                 }
                 for job in self.jobs.values()
@@ -453,7 +536,8 @@ class Cluster(object):
                 print(f"\t{val['name']}:\t[epoch {val['epoch']}]\t[restarts {val['num_restarts']}]\t"
                       f"[batch size {val['batch_size']}]\t[placement {val['placement']}]")
         print(f"allocations: {entry['allocations']}")
-        print(f"GPU utilization: {entry['used_gpus']}")
+        print(f"GPU utilization: {entry['used_gpus']}, Force shrink: {self.force_shrink}")
+        print(f"overhead: {entry['overhead']}")
         print(f"Completed jobs [{len(entry['jct'])}]:")
         print(entry['jct'])
         print("Average JCT:", entry["avg_jct"])
@@ -476,7 +560,10 @@ if __name__ == "__main__":
                         help="output all logs to a json file")
     parser.add_argument("--namespace", type=str, default=None,
                         help="the prefix of each job_name")
+    parser.add_argument('--early_exit', type=int, default=None)
+    parser.add_argument('--ares_threshold', type=float, default=0.75)
     args = parser.parse_args()
 
-    cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace)
+    cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace,
+                      args.early_exit, args.ares_threshold)
     cluster.run()
