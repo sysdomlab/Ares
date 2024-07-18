@@ -9,22 +9,22 @@ import torch.distributed as dist
 
 from models import env
 from models.tool import set_random_seed, signal_handler, get_signal_received, Statistics
-from models.cifar10.trainer import Cifar10Trainer
-from models.imagenet.trainer import ImagenetTrainer
-from models.yolov3.trainer import YOLOv3Trainer
-from models.ncf.trainer import NCFTrainer
-from models.deepspeech2.trainer import Deepspeech2Trainer
-from models.bert.trainer import BertTrainer
+from models.cifar10.trainer import Cifar10AresTrainer
+from models.imagenet.trainer import ImagenetAresTrainer
+from models.yolov3.trainer import YOLOv3AresTrainer
+from models.ncf.trainer import NCFAresTrainer
+from models.deepspeech2.trainer import Deepspeech2AresTrainer
+from models.bert.trainer import BertAresTrainer
 
 
 def get_trainer_cls(model_name):
     return {
-        'cifar10': Cifar10Trainer,
-        'imagenet': ImagenetTrainer,
-        'yolov3': YOLOv3Trainer,
-        'ncf': NCFTrainer,
-        'deepspeech2': Deepspeech2Trainer,
-        'bert': BertTrainer,
+        'cifar10': Cifar10AresTrainer,
+        'imagenet': ImagenetAresTrainer,
+        'yolov3': YOLOv3AresTrainer,
+        'ncf': NCFAresTrainer,
+        'deepspeech2': Deepspeech2AresTrainer,
+        'bert': BertAresTrainer,
     }[model_name]
 
 
@@ -197,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--acc_bsz', type=int, default=80)
     parser.add_argument('--acc_step', type=int, default=1)
 
-    parser.add_argument('--backend', type=str, default="nccl")
+    parser.add_argument('--backend', type=str, default="gloo")
 
     parser.add_argument('--model_name', type=str, default='deepspeech2')
     parser.add_argument('--max_epoch', type=int, default=20)
