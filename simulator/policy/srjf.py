@@ -5,7 +5,7 @@ from typing import Dict, Tuple, List
 from policy.utils import JobInfo, NodeInfo
 
 
-class SJFPolicy(object):
+class SRJFPolicy(object):
     def __init__(self):
         pass
 
@@ -21,12 +21,18 @@ class SJFPolicy(object):
         # Update remaining time for each job.
         for key, job in jobs.items():
             completion_epoch = job.application.get_completion_epoch(job.target_batch_size)
-            if completion_epoch <= job.epoch:
-                job.remaining = 1
-            else:
-                job.remaining = (job.application.get_iteration(job.target_batch_size, completion_epoch) -
-                                 job.application.get_iteration(job.target_batch_size, job.epoch))
-            job.remaining_time = self.predict_step_time(job, 1) * job.remaining
+
+            completion_progress = job.application.get_progress(job.application.max_epochs)
+            scale = job.target_batch_size / job.application.init_batch_size
+            completion_iter = completion_progress / scale
+            job.remaining = completion_iter * (1 - job.epoch / completion_epoch)
+
+            # if completion_epoch <= job.epoch:
+            #     job.remaining = 1
+            # else:
+            #     job.remaining = (job.application.get_iteration(job.target_batch_size, completion_epoch) -
+            #                      job.application.get_iteration(job.target_batch_size, job.epoch))
+            job.remaining_time = self.predict_step_time(job, job.max_replicas) * job.remaining
             print(f">>> job: {key[1]}, remaining: {job.remaining}, remaining_time: {job.remaining_time}")
 
         num_gpus = sum(node.resources["nvidia.com/gpu"] for node in nodes.values())
@@ -35,7 +41,7 @@ class SJFPolicy(object):
         # for key, job in sorted(jobs.items(), key=lambda item: item[1].remaining):
         for key, job in sorted(jobs.items(), key=lambda item: item[1].remaining_time):
             # num_replicas[key] = min(num_gpus, job.max_replicas)
-            desire_replicas = math.ceil(job.target_batch_size / job.application.max_local_bsz)
+            desire_replicas = job.max_replicas
             if desire_replicas > num_gpus:
                 break
             num_replicas[key] = min(num_gpus, desire_replicas)

@@ -24,7 +24,7 @@ class FIFOPolicy(object):
         for key, job in sorted(jobs.items(), key=lambda item: item[1].creation_timestamp):  # fifo queue
             desire_replicas = job.max_replicas
             if desire_replicas > num_gpus:
-                continue
+                break
             num_replicas[key] = desire_replicas
             num_gpus -= desire_replicas
 
