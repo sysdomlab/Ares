@@ -11,7 +11,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from torch.utils.data import DistributedSampler, DataLoader
 
 from models import env
-from models.trainer import Trainer
+from models.ares_trainer import AresTrainer
 # from torch.nn.parallel import DistributedDataParallel as DDP
 from models.tool import AresDataParallel as DDP
 
@@ -22,7 +22,7 @@ from models.tool import Statistics
 import config.yolov3_config_voc as cfg
 
 
-class YOLOv3Trainer(Trainer):
+class YOLOv3AresTrainer(AresTrainer):
     def __init__(self, args):
         super().__init__()
         # Args

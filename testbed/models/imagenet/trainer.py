@@ -10,7 +10,7 @@ from torch.utils.data import DistributedSampler, DataLoader
 from torchvision.datasets import ImageFolder
 
 from models import env
-from models.trainer import Trainer
+from models.ares_trainer import AresTrainer
 import torchvision.transforms as transforms
 # from torch.nn.parallel import DistributedDataParallel as DDP
 from models.tool import AresDataParallel as DDP
@@ -35,7 +35,7 @@ def compute_accuracy(output, target, topk=(1,)):
         return res
 
 
-class ImagenetTrainer(Trainer):
+class ImagenetAresTrainer(AresTrainer):
     def __init__(self, args):
         super().__init__()
         # Args

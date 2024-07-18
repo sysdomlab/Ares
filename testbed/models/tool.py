@@ -16,7 +16,7 @@ from models.env import get_python3_path
 from policy.applications import memoize, APPLICATIONS
 
 
-def set_random_seed(seed=1234):
+def set_random_seed(seed=6666):
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)

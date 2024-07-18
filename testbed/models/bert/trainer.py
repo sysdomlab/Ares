@@ -9,7 +9,7 @@ from transformers.data.metrics.squad_metrics import compute_predictions_logits, 
 from transformers.data.processors.squad import SquadResult
 
 from models import env
-from models.trainer import Trainer
+from models.ares_trainer import AresTrainer
 # from torch.nn.parallel import DistributedDataParallel as DDP
 from models.tool import AresDataParallel as DDP
 
@@ -36,7 +36,7 @@ def load_cache(app_args, evaluate=False):
     return features_and_dataset["dataset"], features_and_dataset["examples"], features_and_dataset["features"]
 
 
-class BertTrainer(Trainer):
+class BertAresTrainer(AresTrainer):
     def __init__(self, args):
         # require transformers==3.4.0 protobuf==3.20.0
         super().__init__()

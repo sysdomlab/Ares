@@ -11,14 +11,14 @@ from models import env
 from models.ncf import data_utils, config
 from models.ncf.evaluate import hit, ndcg
 from models.ncf.model import NCF
-from models.trainer import Trainer
+from models.ares_trainer import AresTrainer
 # from torch.nn.parallel import DistributedDataParallel as DDP
 from models.tool import AresDataParallel as DDP
 
 from models.tool import Statistics
 
 
-class NCFTrainer(Trainer):
+class NCFAresTrainer(AresTrainer):
     def __init__(self, args):
         super().__init__()
         # Args

@@ -10,7 +10,7 @@ from torchvision.datasets import CIFAR10
 
 from models import env
 from models.cifar10.models import ResNet18
-from models.trainer import Trainer
+from models.ares_trainer import AresTrainer
 import torchvision.transforms as transforms
 # from torch.nn.parallel import DistributedDataParallel as DDP
 from models.tool import AresDataParallel as DDP
@@ -18,7 +18,7 @@ from models.tool import AresDataParallel as DDP
 from models.tool import Statistics
 
 
-class Cifar10Trainer(Trainer):
+class Cifar10AresTrainer(AresTrainer):
     def __init__(self, args):
         super().__init__()
         # Args
