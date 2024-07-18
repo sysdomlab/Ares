@@ -9,3 +9,5 @@ imagenet-3,7,imagenet,16,6400
 imagenet-4,8,imagenet,32,6400
 deepspeech2-5,0,deepspeech2,2,640
 imagenet-5,0,imagenet,2,6400
+deepspeech2-6,0,deepspeech2,1,640
+imagenet-6,0,imagenet,1,6400
