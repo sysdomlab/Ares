@@ -3,40 +3,58 @@ import re
 
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+import numpy as np
+from matplotlib.patches import Patch
 
-fontsize = 32
-legend_fontsize = 21
-left, right, top, bottom = 0.17, 1, 1, 0.14
+fontsize = 26
+legend_fontsize = 15
 linewidth = 2
 markersize = 10
 figsize = (6, 3)
+colors = ['#e24933', '#348abd', '#988ed5']
 
 
 def fig1():
     # 创建一个新的图形
     fig, ax = plt.subplots(figsize=figsize)
 
-    # 添加Job-1的矩形
-    job1 = patches.Rectangle((0, 1), 3, 1, linewidth=0, edgecolor='black', facecolor='navy', label='Job-1')
+    # 1
+    job1 = patches.Rectangle((0, 1.5), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[0])
+    ax.add_patch(job1)
+    job1 = patches.Rectangle((0, 0), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job1)
 
-    # 添加Job-2的矩形
-    job2 = patches.Rectangle((0, 0), 3, 1, linewidth=0, edgecolor='black', facecolor='orange', label='Job-2')
+    # 2
+    job2 = patches.Rectangle((2, 2), 3, 1, linewidth=0, edgecolor='black', facecolor=colors[0])
     ax.add_patch(job2)
-    job2_2 = patches.Rectangle((3, 0), 2, 2, linewidth=0, edgecolor='black', facecolor='orange')
-    ax.add_patch(job2_2)
+    job2 = patches.Rectangle((2, 1), 3, 1, linewidth=0, edgecolor='black', facecolor=colors[2])
+    ax.add_patch(job2)
+    job2 = patches.Rectangle((2, 0), 3, 1, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job2)
+
+    # 3
+    job1 = patches.Rectangle((5, 1.5), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[2])
+    ax.add_patch(job1)
+    job1 = patches.Rectangle((5, 0), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job1)
+
+    # 4
+    job1 = patches.Rectangle((7, 0), 1, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job1)
 
     # 设置图的范围和标签
-    plt.xlim(0, 5)
-    plt.ylim(0, 2)
+    plt.xlim(0, 8.5)
+    plt.ylim(0, 3)
     plt.xlabel('Time', fontsize=fontsize, color='black')
     plt.ylabel('GPU #', fontsize=fontsize, color='black')
-    plt.xticks(range(8), fontsize=fontsize, color='black')
-    plt.yticks([0.5, 1.5], [1, 2], fontsize=fontsize, color='black')
+    plt.xticks(range(9), fontsize=fontsize, color='black')
+    plt.yticks([0.5, 1.5, 2.5], [1, 2, 3], fontsize=fontsize, color='black')
 
     # 在横轴上添加箭头
-    ax.annotate('', xy=(7, 0), xytext=(0, 0),
+    ax.annotate('', xy=(8.5, 0), xytext=(0, 0),
                 arrowprops=dict(arrowstyle="->", color='black', lw=4))
+    ax.annotate('', xy=(0, 3), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="-", color='black', lw=4))
 
     # 去掉画布的边框
     ax.spines['top'].set_visible(False)
@@ -46,14 +64,23 @@ def fig1():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(1.5, 1.5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(2.5, 2.5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(2.5, 0.5, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
-            color='black')
-    # ax.text(4, 1, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize, color='black')
+    ax.text(3.5, 1.5, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+    ax.text(4.5, 0.5, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
 
     # 添加图例
-    # plt.legend(handles=[job1, job2])
+    # legend_patches = [Patch(color=color, label=label)
+    #                   for color, label in zip(colors, [f"Job-{i}" for i in range(1, 4)])]
+    # fig.legend(handles=legend_patches,
+    #            loc='upper center',
+    #            bbox_to_anchor=(0.5, 1.025),
+    #            ncol=3,
+    #            fontsize=legend_fontsize,
+    #            frameon=False)
+    # plt.tight_layout(rect=[0, 0, 1, 0.9])  # 调整布局以防止标签被裁剪
     plt.tight_layout()  # 调整布局以防止标签被裁剪
 
     # 显示图形
@@ -67,24 +94,30 @@ def fig2():
     fig, ax = plt.subplots(figsize=figsize)
 
     # 添加Job-1的矩形
-    job1 = patches.Rectangle((0, 0), 2, 2, linewidth=0, edgecolor='black', facecolor='navy', label='Job-1')
+    job1 = patches.Rectangle((0, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[0])
     ax.add_patch(job1)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((2, 0), 4, 2, linewidth=0, edgecolor='black', facecolor='orange', label='Job-2')
+    job2 = patches.Rectangle((2, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[2])
+    ax.add_patch(job2)
+
+    # 添加Job-2的矩形
+    job2 = patches.Rectangle((4, 0), 4, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job2)
 
     # 设置图的范围和标签
-    plt.xlim(0, 5)
-    plt.ylim(0, 2)
+    plt.xlim(0, 8.5)
+    plt.ylim(0, 3)
     plt.xlabel('Time', fontsize=fontsize, color='black')
     plt.ylabel('GPU #', fontsize=fontsize, color='black')
-    plt.xticks(range(8), fontsize=fontsize, color='black')
-    plt.yticks([0.5, 1.5], [1, 2], fontsize=fontsize, color='black')
+    plt.xticks(range(9), fontsize=fontsize, color='black')
+    plt.yticks([0.5, 1.5, 2.5], [1, 2, 3], fontsize=fontsize, color='black')
 
     # 在横轴上添加箭头
-    ax.annotate('', xy=(7, 0), xytext=(0, 0),
+    ax.annotate('', xy=(8.5, 0), xytext=(0, 0),
                 arrowprops=dict(arrowstyle="->", color='black', lw=4))
+    ax.annotate('', xy=(0, 3), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="-", color='black', lw=4))
 
     # 去掉画布的边框
     ax.spines['top'].set_visible(False)
@@ -94,14 +127,23 @@ def fig2():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(1, 1, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(1, 1.5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(4, 1, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
-            color='black')
-    # ax.text(4, 1, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize, color='black')
+    ax.text(3, 1.5, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+    ax.text(6, 1.5, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
 
     # 添加图例
-    # plt.legend(handles=[job1, job2])
+    # legend_patches = [Patch(color=color, label=label)
+    #                   for color, label in zip(colors, [f"Job-{i}" for i in range(1, 4)])]
+    # fig.legend(handles=legend_patches,
+    #            loc='upper center',
+    #            bbox_to_anchor=(0.5, 1.025),
+    #            ncol=3,
+    #            fontsize=legend_fontsize,
+    #            frameon=False)
+    # plt.tight_layout(rect=[0, 0, 1, 0.9])  # 调整布局以防止标签被裁剪
     plt.tight_layout()  # 调整布局以防止标签被裁剪
 
     # 显示图形
@@ -111,17 +153,20 @@ def fig2():
 
 
 def get_metric(exp, metric="cer"):
-    for i in ["-seed0", "-seed1234", "-seed6666"]:
+    all_epochs = []
+    all_cers = []
+
+    for seed in ["-seed0", "-seed1234", "-seed6666"]:
         try:
-            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{i}/restart_0_rank_0.log"
+            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{seed}/restart_0_rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
         except FileNotFoundError:
-            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{i}/rank_0.log"
+            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{seed}/rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
-        pattern = r"Finish Epoch (\d+).*?" + metric + r"=([\d.]+)"
 
+        pattern = r"Finish Epoch (\d+).*?" + metric + r"=([\d.]+)"
         matches = re.findall(pattern, text)
 
         epochs = []
@@ -131,76 +176,84 @@ def get_metric(exp, metric="cer"):
             epoch, cer = match
             epochs.append(int(epoch))
             cers.append(float(cer) / 100)
-            # print(f"Epoch: {epoch}, cer: {cer}")
 
-        print(cers)
-        input()
+        all_epochs.append(epochs)
+        all_cers.append(cers)
 
-    return epochs, cers
+    return all_epochs, all_cers
+
+
+def plot_with_range(ax, epochs, metrics, label):
+    min_metrics = np.min(metrics, axis=0)
+    max_metrics = np.max(metrics, axis=0)
+    mean_metrics = np.average(metrics, axis=0)
+
+    ax.plot(epochs[0], mean_metrics, marker='o', label=label)
+    ax.fill_between(epochs[0], min_metrics, max_metrics, alpha=0.3)
 
 
 def fig3():
     app = {
-        "deepspeech2-1": "32-GPU",
+        # "deepspeech2-1": "32-GPU",
         "deepspeech2-2": "16-GPU",
         "deepspeech2-3": "8-GPU",
         "deepspeech2-4": "4-GPU",
+        "deepspeech2-5": "2-GPU",
     }
 
-    fontsize = 32
-    legend_fontsize = 19
+    fontsize = 35
+    legend_fontsize = 26
     linewidth = 2
     markersize = 10
-    plt.figure(figsize=(8, 7))
+
     plt.style.use('ggplot')
-    for i in app:
-        # file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{i}/restart_0_rank_0.log"
-        epochs, metrics = get_metric(i)
-        print(f"{i} {app[i]}, Epoch: {epochs[-1]}, cer: {metrics[-1]}")
-        plt.plot(epochs, metrics, marker='o', label=app[i])
+    fig, ax = plt.subplots(figsize=(8, 7))
 
-    plt.xlabel('Epoch', fontsize=fontsize, color='black')
-    plt.ylabel('Character Error Rate', fontsize=fontsize, color='black')
-    plt.xticks(fontsize=fontsize, color='black')
-    plt.yticks(fontsize=fontsize, color='black')
-    plt.legend(fontsize=legend_fontsize)
+    for exp, label in app.items():
+        epochs, metrics = get_metric(exp)
+        print(f"{exp} {label}, cer: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}")
+        plot_with_range(ax, epochs, metrics, label)
+
+    ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
+    ax.set_ylabel('Character Error Rate', fontsize=fontsize, color='black')
+    ax.tick_params(axis='both', which='major', labelsize=fontsize, colors='black')
+    ax.legend(fontsize=legend_fontsize)
     plt.tight_layout()
-    # plt.savefig("cer_vs_epoch.png")
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity1.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity1.png"))
     plt.show()
-
+    plt.clf()
 
     app = {
-        "imagenet-4": "32-GPU",
+        # "imagenet-4": "32-GPU",
         "imagenet-3": "16-GPU",
         "imagenet-2": "8-GPU",
         "imagenet-1": "4-GPU",
+        "imagenet-5": "2-GPU",
     }
 
-    fontsize = 32
-    legend_fontsize = 19
-    linewidth = 2
-    markersize = 10
-    plt.figure(figsize=(8, 7))
     plt.style.use('ggplot')
-    for i in app:
-        # file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{i}/restart_0_rank_0.log"
-        epochs, metrics = get_metric(i, "accuracy5")
-        print(f"{i} {app[i]}, Epoch: {epochs[-1]}, accuracy5: {metrics[-1]}")
-        plt.plot(epochs, metrics, marker='o', label=app[i])
+    fig, ax = plt.subplots(figsize=(8, 7))
 
-    plt.xlabel('Epoch', fontsize=fontsize, color='black')
-    plt.ylabel('Top-5 Accuracy', fontsize=fontsize, color='black')
-    plt.xticks(fontsize=fontsize, color='black')
-    plt.yticks(fontsize=fontsize, color='black')
-    plt.legend(fontsize=legend_fontsize)
+    for exp, label in app.items():
+        epochs, metrics = get_metric(exp, "accuracy5")
+        print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}")
+        plot_with_range(ax, epochs, metrics, label)
+
+    ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
+    ax.set_ylabel('Top-5 Accuracy', fontsize=fontsize, color='black')
+    ax.tick_params(axis='both', which='major', labelsize=fontsize, colors='black')
+    ax.legend(fontsize=legend_fontsize)
     plt.tight_layout()
-    # plt.savefig("cer_vs_epoch.png")
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity2.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity2.png"))
     plt.show()
+    plt.clf()
 
 
 if __name__ == '__main__':
     # 调度示意图
-    # fig1()
-    # fig2()
+    fig1()
+    fig2()
     # 内生弹性精度
-    fig3()
+    # fig3()
