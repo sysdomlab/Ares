@@ -53,6 +53,8 @@ def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
 
 
 def fig2_sim_all_jct_and_ftf(workload_sets, save_path):
+    fontsize = 34
+
     # 1. avg jct
     plt.style.use('ggplot')
     fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
@@ -62,17 +64,17 @@ def fig2_sim_all_jct_and_ftf(workload_sets, save_path):
         df = pd.DataFrame(results_data)
         all_data, improve, reduce = print_improve_reduce(df, [])
         print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
-        plot_grouped_bar_v2(axs[i], df, workload_set, "Average JCT (hrs)")
+        plot_grouped_bar_v2(axs[i], df, workload_set, "Avg. JCT (hrs)", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=32, frameon=False)
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
 
     # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
     plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
     plt.savefig(f"{save_path}_jct.jpg")
     plt.savefig(f"{save_path}_jct.pdf")
-    # plt.show()
+    plt.show()
     plt.clf()
     print(f"finish plot {save_path}")
 
@@ -98,17 +100,17 @@ def fig2_sim_all_jct_and_ftf(workload_sets, save_path):
         df = pd.DataFrame(results_data)
         all_data, improve, reduce = print_improve_reduce(df, [])
         print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
-        plot_grouped_bar_v2(axs[i], df, workload_set, "Unfair Job Fraction")
+        plot_grouped_bar_v2(axs[i], df, workload_set, "Unfair Fraction", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=32, frameon=False)
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
 
     # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
     plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
     plt.savefig(f"{save_path}_unfair.jpg")
     plt.savefig(f"{save_path}_unfair.pdf")
-    # plt.show()
+    plt.show()
     plt.clf()
     print(f"finish plot {save_path}")
 
@@ -134,17 +136,17 @@ def fig2_sim_all_jct_and_ftf(workload_sets, save_path):
         df = pd.DataFrame(results_data)
         all_data, improve, reduce = print_improve_reduce(df, [])
         print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
-        plot_grouped_bar_v2(axs[i], df, workload_set, "Worst FTF")
+        plot_grouped_bar_v2(axs[i], df, workload_set, "Worst FTF", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=32, frameon=False)
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
 
     # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
     plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
     plt.savefig(f"{save_path}_ftf.jpg")
     plt.savefig(f"{save_path}_ftf.pdf")
-    # plt.show()
+    plt.show()
     plt.clf()
     print(f"finish plot {save_path}")
 
@@ -297,8 +299,8 @@ def fig1_physical_jct_ftf_with_err_bar():
                             ylabel='Makespan (hrs)')
 
 
-def plot_grouped_err_bar_v3(ax, algorithms, testbed_data, colors, ylabel='Avg. JCT (hrs)'):
-    fontsize = 32
+def plot_grouped_err_bar_v3(ax, algorithms, testbed_data, colors, hatches, ylabel='Avg. JCT (hrs)'):
+    fontsize = 22
     testbed_jct_means = [np.mean(i) for i in testbed_data]
     testbed_jct_errors = [[mean - min(data), max(data) - mean] for mean, data in zip(testbed_jct_means, testbed_data)]
     testbed_jct_errors = np.array(testbed_jct_errors).T
@@ -306,16 +308,22 @@ def plot_grouped_err_bar_v3(ax, algorithms, testbed_data, colors, ylabel='Avg. J
     x = np.arange(len(algorithms))
     width = 1  # 设置柱子宽度为1以减少空隙
 
-    # 使用默认颜色循环
-    rects = ax.bar(x, testbed_jct_means, width,
-                   label=algorithms, color=colors, yerr=testbed_jct_errors,
-                   capsize=50, error_kw={'elinewidth': 5})
+    rects = []
+    for i, (mean, err, color, hatch) in enumerate(zip(testbed_jct_means, testbed_jct_errors.T, colors, hatches)):
+        rect = ax.bar(x[i], mean,
+                      # width,
+                      yerr=err.reshape((2, 1)),
+                      label=algorithms[i],
+                      color=color,
+                      # edgecolor=color,
+                      capsize=22, error_kw={'elinewidth': 3})
+        rects.append(rect)
 
     ax.set_ylabel(ylabel, fontsize=fontsize, color='black')
-    # 去除x轴坐标
     ax.set_xticks([])
     ax.tick_params(axis='y', labelsize=fontsize, colors='black')
     return rects
+
 
 def fig1_physical_jct_ftf_with_err_bar_v3():
     testbed_path = "/home/cchen/yfliu/ares/bkp/testbed/"
@@ -324,6 +332,7 @@ def fig1_physical_jct_ftf_with_err_bar_v3():
     algos = ['ares', 'finish_time_fairness_perf', 'tiresias', 'pollux']
     algorithms = [algo_name[i] for i in algos]
     colors = ['#e24a33', '#3489bf', '#988ed5', '#777777']  # 定义每个算法的颜色
+    hatches = ['/', '\\', '|', '-']  # 定义每个算法的花纹
 
     # 1. jct
     data_jct = [
@@ -361,23 +370,87 @@ def fig1_physical_jct_ftf_with_err_bar_v3():
     ]
     print(f"data_makespan: {data_makespan}")
 
-    # fig, axs = plt.subplots(1, 3, figsize=(18, 6), sharey=False)
-    plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(24, 6), sharey=False)
+    # plt.style.use('ggplot')
+    fig, axs = plt.subplots(1, 3, figsize=(14, 4), sharey=False)
 
-    rects1 = plot_grouped_err_bar_v3(axs[0], algorithms, data_jct, colors, ylabel='Avg. JCT (hrs)')
-    rects2 = plot_grouped_err_bar_v3(axs[1], algorithms, data_unfair, colors, ylabel='Unfair Job Fraction')
-    # rects3 = plot_grouped_err_bar_v3(axs[2], algorithms, data_worst_ftf, colors, ylabel='Worst FTF')
-    rects3 = plot_grouped_err_bar_v3(axs[2], algorithms, data_makespan, colors, ylabel='Makespan (hrs)')
+    rects1 = plot_grouped_err_bar_v3(axs[0], algorithms, data_jct, colors, hatches, ylabel='Avg. JCT (hrs)')
+    rects2 = plot_grouped_err_bar_v3(axs[1], algorithms, data_unfair, colors, hatches, ylabel='Unfair Job Fraction')
+    # rects3 = plot_grouped_err_bar_v3(axs[2], algorithms, data_worst_ftf, colors, hatches, ylabel='Worst FTF')
+    rects3 = plot_grouped_err_bar_v3(axs[2], algorithms, data_makespan, colors, hatches, ylabel='Makespan (hrs)')
 
     # Create a combined legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper center', ncol=len(algorithms), fontsize=32, frameon=False)
+    fig.legend(handles, labels, loc='upper center', ncol=len(algorithms), fontsize=22, frameon=False)
 
     fig.tight_layout(rect=[0, 0, 1, 0.85])
-    save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_metrics")
+    save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_testbed")
     plt.savefig(save_path + ".jpg")
     plt.savefig(save_path + ".pdf")
+    plt.show()
+
+
+def fig1_physical_jct_ftf_with_err_bar_v4():
+    testbed_path = "/home/cchen/yfliu/ares/bkp/testbed/"
+    simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
+                       "Simulator-Fidelity/workloads-4h-40j/workload-6/")
+    algos = ['ares', 'finish_time_fairness_perf', 'tiresias', 'pollux']
+    algorithms = [algo_name[i] for i in algos]
+
+    # 1. jct
+    data_jct = [
+        [get_avg_jct(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        for algo in algos
+    ]
+    print(f"data_jct: {data_jct}")
+
+    # 2. unfair
+    def compute_unfair(a, b=simulation_path + "ares.txt"):
+        job_ftf = calculate_ftf_in_algo(get_all_jct(a), get_fair_jct(b))
+        return sum([i > 1 for i in job_ftf.values()]) / len(job_ftf.values())
+
+    data_unfair = [
+        [compute_unfair(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        for algo in algos
+    ]
+    print(f"data_unfair: {data_unfair}")
+
+    # 3. makespan
+    data_makespan = [
+        [get_makespan(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        for algo in algos
+    ]
+    print(f"data_makespan: {data_makespan}")
+
+    # 计算平均值和标准误
+    def get_avg_and_err(data):
+        means = np.mean(data, axis=1)
+        errors = np.std(data, axis=1)
+        return means, errors
+
+    jct_means, jct_errors = get_avg_and_err(data_jct)
+    unfair_means, unfair_errors = get_avg_and_err(data_unfair)
+    makespan_means, makespan_errors = get_avg_and_err(data_makespan)
+
+    # 创建子图
+    fig, axs = plt.subplots(1, 3, figsize=(10, 3))
+
+    # JCT 图
+    axs[0].bar(algorithms, jct_means, yerr=jct_errors, capsize=5)
+    axs[0].set_title('Average JCT with Error Bars')
+    axs[0].set_ylabel('Average JCT')
+
+    # Unfair 图
+    axs[1].bar(algorithms, unfair_means, yerr=unfair_errors, capsize=5)
+    axs[1].set_title('Unfairness with Error Bars')
+    axs[1].set_ylabel('Unfairness')
+
+    # Makespan 图
+    axs[2].bar(algorithms, makespan_means, yerr=makespan_errors, capsize=5)
+    axs[2].set_title('Makespan with Error Bars')
+    axs[2].set_ylabel('Makespan')
+
+    plt.xlabel('Algorithms')
+    plt.tight_layout()
     plt.show()
 
 
@@ -418,7 +491,7 @@ def plot_cdf(ax, data, xlabel, fontsize=32, legend_fontsize=19, linewidth=2):
 def fig3_ftf_cdf():
     simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
                        "Simulation-16nodes/saturn/workload-2")
-    algorithms = ['Ares', 'Gavel', 'Themis', 'Allox', 'Tiresias', 'Optimus', 'Pollux']
+    algorithms = ['Ares', 'Gavel', 'Themis', 'AlloX', 'Tiresias', 'Optimus', 'Pollux']
 
     # First plot data
     jct_data = {
@@ -439,7 +512,7 @@ def fig3_ftf_cdf():
     }
 
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 2, figsize=(16, 8))  # Create 1 row and 2 columns of subplots
+    fig, axs = plt.subplots(1, 2, figsize=(16, 6))  # Create 1 row and 2 columns of subplots
     plot_cdf(axs[0], jct_data, "Job Completion Time (hrs)")
     plot_cdf(axs[1], ftf_data, "Finish Time Fairness Ratio")
 
@@ -447,7 +520,7 @@ def fig3_ftf_cdf():
     handles, labels = axs[0].get_legend_handles_labels()
     fig.legend(handles, labels, ncol=4, loc='upper center', bbox_to_anchor=(0.5, 1.04), fontsize=30, frameon=False)
 
-    plt.tight_layout(rect=[0, 0, 1, 0.87])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=[0, 0, 1, 0.8])  # Adjust layout to prevent clipping of labels and legend
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_cdf")
     plt.savefig(save_path + ".pdf")
     plt.savefig(save_path + ".png")
@@ -527,7 +600,7 @@ def overhead():
     percentiles_25 = []
     percentiles_75 = []
     for workload_set in workload_sets:
-        results_data = get_data_from_raw_log(workload_set, "overhead")
+        results_data = get_data_from_raw_log(workload_set, "overhead", trans=False)
         df = pd.DataFrame(results_data)
         df = df.groupby(['workload', 'algo'])['res'].median().unstack()["ares"]
         median_val = df.median()
@@ -543,17 +616,15 @@ def overhead():
     asymmetric_error = [lower_errors, upper_errors]
 
     # 绘制带误差条的折线图
+    labelsize = 20
     fontsize = 16
-    legend_fontsize = 19
-    linewidth = 2
-    markersize = 10
 
     plt.style.use('ggplot')
-    plt.figure(figsize=(8, 3))
+    plt.figure(figsize=(5, 4))
     plt.errorbar(gpu_size, medians, yerr=asymmetric_error, fmt='-o', capsize=5, capthick=2, elinewidth=2)
-    plt.xlabel('Cluster size (#GPUs)', fontsize=fontsize, color='black')
-    plt.ylabel('Policy runtime (s)', fontsize=fontsize, color='black')
-    plt.xticks(fontsize=fontsize, color='black')
+    plt.xlabel('Cluster size (#GPUs)', fontsize=labelsize, color='black')
+    plt.ylabel('Policy runtime (s)', fontsize=labelsize, color='black')
+    plt.xticks(fontsize=fontsize, color='black', rotation=45)
     plt.yticks(fontsize=fontsize, color='black')
     plt.tight_layout()  # 调整布局以防止标签被裁剪
     plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"overhead.pdf"))
@@ -589,7 +660,8 @@ def sensitivity():
 
     # Set the style and figure size for the plot
     plt.style.use('ggplot')
-    plt.figure(figsize=(8, 3))
+    plt.figure(figsize=(5, 4))
+    labelsize = 20
     fontsize = 16
 
     for workload_set, workload_name, marker in zip(workload_sets, workload_names, markers):
@@ -598,7 +670,7 @@ def sensitivity():
         percentiles_25 = []
         percentiles_75 = []
         # Retrieve data from raw log files
-        results_data = get_data_from_raw_log(workload_set, "avg_jct")
+        results_data = get_data_from_raw_log(workload_set, "avg_jct", trans=False)
         # Convert the results to a dataframe
         df = pd.DataFrame(results_data)
 
@@ -621,9 +693,9 @@ def sensitivity():
                      capthick=2, elinewidth=2, label=workload_name)
 
     # Add labels to the plot
-    plt.xlabel('scalability control threshold', fontsize=fontsize, color='black')
-    plt.ylabel('Average JCT (hrs)', fontsize=fontsize, color='black')
-    plt.xticks(fontsize=fontsize, color='black')
+    plt.xlabel('Efficiency Threshold', fontsize=labelsize, color='black')
+    plt.ylabel('Average JCT (hrs)', fontsize=labelsize, color='black')
+    plt.xticks(fontsize=fontsize, color='black', rotation=45)
     plt.yticks(fontsize=fontsize, color='black')
     plt.legend(fontsize=fontsize)  # Add legend for the different workload sets
     plt.tight_layout()  # Adjust layout to prevent label cutoff
@@ -641,12 +713,12 @@ if __name__ == '__main__':
     # for workload_set in workload_sets:
     #     fig2_sim_all_jct_and_ftf(workload_set)
     # fig2_sim_all_jct_and_ftf(workload_sets, os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot"))
-    fig1_physical_jct_ftf_with_err_bar_v3()
+    # fig1_physical_jct_ftf_with_err_bar_v3()
     # fig3_ftf_cdf()
     # fig4_visualized_schedules()
 
     # os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-scale")
     # overhead()
 
-    # os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-sensitivity")
-    # sensitivity()
+    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-sensitivity")
+    sensitivity()

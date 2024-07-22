@@ -45,7 +45,7 @@ def fig1():
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
     plt.ylim(0, 3)
-    plt.xlabel('Time', fontsize=fontsize, color='black')
+    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
     plt.ylabel('GPU #', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5, 2.5], [1, 2, 3], fontsize=fontsize, color='black')
@@ -108,7 +108,7 @@ def fig2():
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
     plt.ylim(0, 3)
-    plt.xlabel('Time', fontsize=fontsize, color='black')
+    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
     plt.ylabel('GPU #', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5, 2.5], [1, 2, 3], fontsize=fontsize, color='black')
@@ -256,4 +256,4 @@ if __name__ == '__main__':
     fig1()
     fig2()
     # 内生弹性精度
-    # fig3()
+    fig3()

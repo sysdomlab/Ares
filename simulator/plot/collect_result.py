@@ -12,15 +12,65 @@ from collections import defaultdict
 from matplotlib.patches import Patch
 
 
+algo_name = {
+    "ares": "Ares",
+    "optimus": "Optimus",
+    "pollux": "Pollux",
+    "tiresias": "Tiresias",
+    "srjf": "SRJF",
+    "max_min_fairness": "Gavel",
+    "fifo": "FIFO",
+    "finish_time_fairness_perf": "Themis",
+    "max_sum_throughput_perf": "MSS",
+    "allox": "AlloX",
+
+    "Ares": "ares",
+    "Optimus": "optimus",
+    "Pollux": "pollux",
+    "Tiresias": "tiresias",
+    "SRJF": "srjf",
+    "Gavel": "max_min_fairness",
+    "FIFO": "fifo",
+    "Themis": "finish_time_fairness_perf",
+    "MSS": "max_sum_throughput_perf",
+    "AlloX": "allox",
+}
+
+trace_name = {
+    "philly": "Philly",
+    "saturn": "Helios",
+    "newtrace": "newTrace",
+}
+
+priority = {
+    "ares": 1,
+    "max_min_fairness": 2,
+    "finish_time_fairness_perf": 3,
+    "allox": 4,
+    "tiresias": 5,
+    "optimus": 6,
+    "pollux": 7,
+    "srjf": 8,
+    # "fifo": 9,
+    "max_sum_throughput_perf": 10,
+}
+
 # 遍历日志文件
-def get_all_files_in_directory(directory, exclude_substr: list = None):
+def get_all_txt_files_in_directory(directory, exclude_substr: list = None):
     file_paths = []
     for root, dirs, files in os.walk(directory):
         for file in files:
             file_paths.append(os.path.join(root, file))
+    # exclude = ["fifo", "max_min_fairness", "finish_time_fairness_perf", "max_sum_throughput_perf", "optimus"]
+    # exclude = ["fifo", "optimus"]
+    exclude = ["fifo", "max_sum_throughput_perf", "srjf"]
     if exclude_substr is not None:
-        file_paths = [i for i in file_paths if all(j not in i for j in exclude_substr)]
-        file_paths = [i for i in file_paths if "txt" in i]
+        exclude += exclude_substr
+    file_paths = [i for i in file_paths if all(j not in i for j in exclude)]
+    file_paths = [i for i in file_paths if "txt" in i]
+    # print(file_paths)
+    # input()
+    # file_paths = sorted(file_paths, key=lambda x: priority[x.split("/")[-1].replace(".txt", "")])
     return file_paths
 
 
@@ -55,9 +105,9 @@ def get_makespan(log_file):
     return res
 
 
-def get_data_from_raw_log(wl_set, metric):
+def get_data_from_raw_log(wl_set, metric, trans=True):
     results_data = []
-    for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
+    for file in sorted(get_all_txt_files_in_directory(wl_set)):
         # 从文件名中提取工作负载和算法
         workload = file.split("/")[-2].split("-")[-1]
         algo = os.path.splitext(file.split("/")[-1])[0]
@@ -77,7 +127,7 @@ def get_data_from_raw_log(wl_set, metric):
         # 将结果数据添加到列表中
         results_data.append({
             "workload": workload,
-            "algo": algo,
+            "algo": algo_name[algo] if trans else algo,
             "res": res
         })
     return results_data
@@ -137,7 +187,7 @@ def get_fair_jct(log_file):
 
 def get_all_jct_from_raw_log(wl_set):
     results_data = defaultdict(dict)
-    for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
+    for file in sorted(get_all_txt_files_in_directory(wl_set)):
         workload = file.split("/")[-2].split("-")[-1]
         algo = file.split("/")[-1].split(".")[0]
         # print(f"Workload: {workload}, Algorithm: {algo}")
@@ -145,13 +195,13 @@ def get_all_jct_from_raw_log(wl_set):
         res_dict: dict = get_all_jct(file)
         # print(res_dict)
 
-        results_data[workload][algo] = res_dict
+        results_data[workload][algo_name[algo]] = res_dict
     return results_data
 
 
 def get_fair_jct_from_raw_log(wl_set):
     results_data = {}
-    for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
+    for file in sorted(get_all_txt_files_in_directory(wl_set)):
         if "ares" not in file:
             continue
         workload = file.split("/")[-2].split("-")[-1]
@@ -289,14 +339,14 @@ def get_scheduling_data(log_file):
 
 def get_scheduling_from_raw_log(wl_set):
     results_data = collections.defaultdict(dict)
-    for file in sorted(get_all_files_in_directory(wl_set, ["fifo", "jpg"])):
+    for file in sorted(get_all_txt_files_in_directory(wl_set)):
         workload = file.split("/")[-2].split("-")[-1]
         algo = file.split("/")[-1].split(".")[0]
         # print(workload, file)
 
         res = get_scheduling_data(file)
 
-        results_data[workload][algo] = res
+        results_data[workload][algo_name[algo]] = res
     return results_data
 
 
@@ -371,9 +421,9 @@ def print_improve_reduce(df, metric=None, workload=None):
         all_data = all_data.loc[[workload]]
     if metric is None or "all" in metric:
         print(f"all: \n{all_data}")
-    ares = all_data['ares']
-    improve = all_data.drop('ares', axis=1).sub(ares, axis=0).div(ares, axis=0).round(4)
-    reduce = all_data.drop('ares', axis=1).sub(ares, axis=0).div(all_data.drop('ares', axis=1), axis=0).round(4)
+    ares = all_data['Ares']
+    improve = all_data.drop('Ares', axis=1).sub(ares, axis=0).div(ares, axis=0).round(4)
+    reduce = all_data.drop('Ares', axis=1).sub(ares, axis=0).div(all_data.drop('Ares', axis=1), axis=0).round(4)
     if metric is None or "improve" in metric:
         print(f"improve: \n{improve}")
     if metric is None or "reduce" in metric:
@@ -391,100 +441,101 @@ def get_workload_num(workload_set):
 
 
 def main(workload_set):
-    # # 1. avg jct
-    # results_data = get_data_from_raw_log(workload_set, "avg_jct")
-    # df = pd.DataFrame(results_data)
-    # print(f">>> avg jct for {workload_set}:\n {df}")
-    # all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
-    # print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
-    # # print(get_markdown_table(df))
-    # plot_grouped_bar(df, workload_set, "Average JCT")
-    #
+    # 1. avg jct
+    results_data = get_data_from_raw_log(workload_set, "avg_jct")
+    df = pd.DataFrame(results_data)
+    print(f">>> avg jct for {workload_set}:\n {df}")
+    all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
+    print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
+    # print(get_markdown_table(df))
+    plot_grouped_bar(df, workload_set, "Average JCT")
+
     # 2. p99 jct
     results_data = get_data_from_raw_log(workload_set, "p99_jct")
     df = pd.DataFrame(results_data)
     # print(f">>> p99 jct for {workload_set}:\n {df}")
     all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
     print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
-    # plot_grouped_bar(df, workload_set, "P99 JCT")
-    #
-    # # 3. Makespan
-    # results_data = get_data_from_raw_log(workload_set, "makespan")
-    # df = pd.DataFrame(results_data)
-    # print(f">>> makespan for {workload_set}:\n {df}")
-    # plot_grouped_bar(df, workload_set, "Makespan")
+    plot_grouped_bar(df, workload_set, "P99 JCT")
 
-    # # 4. finish time fairness
-    # #   4.1 FTF CDF
-    # real_jct = get_all_jct_from_raw_log(workload_set)
-    # fair_jct = get_fair_jct_from_raw_log(workload_set)
-    # ftf = calculate_ftf(real_jct, fair_jct)
-    # # plot_cdf(ftf, workload_set)
-    #
-    # #   4.2 avg FTF
-    # results_data = [
-    #     {
-    #         "workload": workload,
-    #         "algo": algo,
-    #         "res": sum(job.values()) / len(job),
-    #     }
-    #     for workload, algo_data in ftf.items()
-    #     for algo, job in algo_data.items()
-    # ]
-    # df = pd.DataFrame(results_data)
-    # # print(f">>> avg ftf for {workload_set}:\n {df}")
-    # all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
-    # print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
-    # # plot_grouped_bar(df, workload_set, "Average FTF")
+    # 3. Makespan
+    results_data = get_data_from_raw_log(workload_set, "makespan")
+    df = pd.DataFrame(results_data)
+    print(f">>> makespan for {workload_set}:\n {df}")
+    plot_grouped_bar(df, workload_set, "Makespan")
+
+    # 4. finish time fairness
+    #   4.1 FTF CDF
+    real_jct = get_all_jct_from_raw_log(workload_set)
+    fair_jct = get_fair_jct_from_raw_log(workload_set)
+    ftf = calculate_ftf(real_jct, fair_jct)
+    plot_cdf(ftf, workload_set)
+
+    #   4.2 avg FTF
+    results_data = [
+        {
+            "workload": workload,
+            "algo": algo_name[algo],
+            "res": sum(job.values()) / len(job),
+        }
+        for workload, algo_data in ftf.items()
+        for algo, job in algo_data.items()
+    ]
+    df = pd.DataFrame(results_data)
+    # print(f">>> avg ftf for {workload_set}:\n {df}")
+    all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
+    print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
+    plot_grouped_bar(df, workload_set, "Average FTF")
 
     #   4.3 worst FTF
-    # results_data = [
-    #     {
-    #         "workload": workload,
-    #         "algo": algo,
-    #         "res": max(job.values()),
-    #     }
-    #     for workload, algo_data in ftf.items()
-    #     for algo, job in algo_data.items()
-    # ]
-    # df = pd.DataFrame(results_data)
-    # all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
-    # print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
-    # print(f">>> worst ftf for {workload_set}:\n {df}")
-    # plot_grouped_bar(df, workload_set, "Worst FTF")
-    #
-    # #   4.3 p99 FTF
-    # results_data = [
-    #     {
-    #         "workload": workload,
-    #         "algo": algo,
-    #         "res": np.percentile([i for i in job.values()], 99)
-    #     }
-    #     for workload, algo_data in ftf.items()
-    #     for algo, job in algo_data.items()
-    # ]
-    # df = pd.DataFrame(results_data)
-    # print(f">>> p99 ftf for {workload_set}:\n {df}")
-    # plot_grouped_bar(df, workload_set, "P99 FTF")
-    #
-    # # # 5. visualize scheduling decision
+    results_data = [
+        {
+            "workload": workload,
+            "algo": algo_name[algo],
+            "res": max(job.values()),
+        }
+        for workload, algo_data in ftf.items()
+        for algo, job in algo_data.items()
+    ]
+    df = pd.DataFrame(results_data)
+    all_data, improve, reduce = print_improve_reduce(df, metric=[], workload=get_workload_num(workload_set))
+    print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
+    print(f">>> worst ftf for {workload_set}:\n {df}")
+    plot_grouped_bar(df, workload_set, "Worst FTF")
+
+    #   4.3 p99 FTF
+    results_data = [
+        {
+            "workload": workload,
+            "algo": algo_name[algo],
+            "res": np.percentile([i for i in job.values()], 99)
+        }
+        for workload, algo_data in ftf.items()
+        for algo, job in algo_data.items()
+    ]
+    df = pd.DataFrame(results_data)
+    print(f">>> p99 ftf for {workload_set}:\n {df}")
+    plot_grouped_bar(df, workload_set, "P99 FTF")
+
+    # 5. visualize scheduling decision
     # results_data = get_scheduling_from_raw_log(workload_set)
     # plot_scheduling(results_data, workload_set,
     #                 wl_set_filter=[
-    #                     "workloads-0.5",
-    #                     "workloads-1.0",
-    #                     "workloads-1.5",
-    #                     "workloads-2.0",
-    #                     "workloads-realistic",
+    #                     # "workloads-0.5",
+    #                     # "workloads-1.0",
+    #                     # "workloads-1.5",
+    #                     # "workloads-2.0",
+    #                     # "workloads-realistic",
     #                     "philly", "saturn", "newtrace"
     #                 ],
     #                 wl_filter=["1", "2", "3", "4", "5", "6", "7", "8"],
     #                 algo_filter=[
     #                     "ares",
-    #                     "optimus",
+    #                     # "optimus",
     #                     "pollux",
     #                     "tiresias",
     #                     # "sjf"
+    #                     "finish_time_fairness_perf"
     #                 ])
 
     pass

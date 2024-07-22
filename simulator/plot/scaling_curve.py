@@ -1,3 +1,5 @@
+import os
+
 import math
 import numpy as np
 from matplotlib import pyplot as plt
@@ -57,7 +59,7 @@ if __name__ == '__main__':
         "deepspeech2": "DeepSpeech2",
         "yolov3": "YOLOv3",
     }
-    fontsize = 32
+    fontsize = 35
     legend_fontsize = 19
     left, right, top, bottom = 0.17, 1, 1, 0.14
     linewidth = 2
@@ -82,9 +84,10 @@ if __name__ == '__main__':
     plt.xlabel("Number of GPUs", fontsize=fontsize, color='black')
     plt.ylabel("Normalized Throughput", fontsize=fontsize, color='black')
     plt.legend(fontsize=legend_fontsize)
-    plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
-    plt.savefig("plot/Efficiency.pdf")
-    plt.savefig("plot/Efficiency.png")
+    plt.tight_layout()
+    # plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"Efficiency.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"Efficiency.png"))
     plt.show()
 
     # 2. speedup
@@ -107,7 +110,8 @@ if __name__ == '__main__':
     plt.xlabel("Number of GPUs", fontsize=fontsize, color='black')
     plt.ylabel("Normalized Throughput", fontsize=fontsize, color='black')
     plt.legend(fontsize=legend_fontsize)
-    plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
-    plt.savefig("plot/Speedup.pdf")
-    plt.savefig("plot/Speedup.png")
+    plt.tight_layout()
+    # plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"Speedup.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"Speedup.png"))
     plt.show()
