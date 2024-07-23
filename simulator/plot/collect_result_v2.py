@@ -153,26 +153,32 @@ def fig2_sim_all_jct_and_ftf_v2():
     print(f"finish plot {save_path}")
 
 
-def plot_grouped_bar_v3(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21):
-    linewidth = 2
-    markersize = 10
+def plot_grouped_bar_v3(ax, src, metric, fontsize=32):
+    colors = ['#e24a33', '#348abd', '#988ed5', '#777777', "#fbc15e", "#8eba41", "#ffb4b8"]  # 定义每个算法的颜色
 
-    # Grouping the data by 'workload' and 'algo' and calculating mean JCT
-    grouped_df = src.groupby(['workload', 'algo'])['res'].mean().unstack()
+    # Grouping the data by 'algo' and calculating median and percentiles across all workloads
+    grouped_df = src.groupby('algo')['res'].median()
+    print(grouped_df)
+    error_lower = src.groupby('algo')['res'].quantile(0.25)
+    error_upper = src.groupby('algo')['res'].quantile(0.75)
 
-    grouped_df = grouped_df.reindex(columns=sorted(grouped_df.columns, key=lambda x: priority[algo_name[x]]))
+    # Sorting columns by priority
+    grouped_df = grouped_df.reindex(sorted(grouped_df.index, key=lambda x: priority[algo_name[x]]))
+    error_lower = error_lower.reindex(grouped_df.index)
+    error_upper = error_upper.reindex(grouped_df.index)
 
-    # Plotting the bar chart
-    grouped_df.plot(kind='bar', ax=ax, legend=False)
+    # Plotting the bar chart with error bars
+    grouped_df.plot(kind='bar', ax=ax, legend=False, color=colors,
+                    yerr=[grouped_df - error_lower, error_upper - grouped_df], capsize=4)
 
-    if metric == "Unfair Job Fraction":
+    if metric == "Unfair Fraction":
         ax.set_ylim(0, 1)
 
     # Adding labels and title
-    ax.title.set_text(f"{trace_name[wl_set]}")
+    ax.title.set_text(f"{metric}")
     ax.title.set_fontsize(fontsize)
     ax.title.set_color('black')
-    ax.set_xlabel('Trace ID', fontsize=fontsize, color='black')
+    ax.set_xlabel('Algorithm', fontsize=fontsize, color='black')
     ax.set_ylabel(f'{metric}', fontsize=fontsize, color='black')
     ax.set_xticks(ax.get_xticks())
     ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=fontsize, color='black')
@@ -183,109 +189,71 @@ def plot_grouped_bar_v3(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
     yticks = ax.get_yticks()
     stride = len(yticks) // 7 + 1
     yticks = [float(f"{i:.1f}") for i in yticks[::stride]]
-    ax.set_yticks(yticks)  # Show every 2nd y-tick for example
+    ax.set_yticks(yticks)  # Show every n-th y-tick
     ax.set_yticklabels(yticks, fontsize=fontsize, color='black')
 
 
 def fig2_sim_all_jct_and_ftf_v3():
+    algorithms = ["Ares", "Gavel", "Themis", "AlloX", "Tiresias", "Optimus", "Pollux"]
     workload_sets = ["philly", "saturn", "newtrace"]
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot")
     fontsize = 34
 
-    # 1. avg jct
+    metrics = ["Avg. JCT (hrs)", "Unfair Fraction", "Worst FTF"]
+
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
 
-    for i, workload_set in enumerate(workload_sets):
-        results_data = get_data_from_raw_log(workload_set, "avg_jct")
-        df = pd.DataFrame(results_data)
-        all_data, improve, reduce = print_improve_reduce(df, [])
-        print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
-        plot_grouped_bar_v3(axs[i], df, workload_set, "Avg. JCT (hrs)", fontsize)
+    for workload_set in workload_sets:
+        fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
 
-    # Customize the legend
-    handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
+        for i, metric in enumerate(metrics):
+            if metric == "Avg. JCT (hrs)":
+                results_data = get_data_from_raw_log(workload_set, "avg_jct")
+                df = pd.DataFrame(results_data)
+                # print(df)
+            elif metric == "Unfair Fraction":
+                real_jct = get_all_jct_from_raw_log(workload_set)
+                fair_jct = get_fair_jct_from_raw_log(workload_set)
+                ftf = calculate_ftf(real_jct, fair_jct)
+                results_data = [
+                    {
+                        "trace": trace,
+                        "algo": algo,
+                        "res": sum([i > 1 for i in job.values()]) / len(job.values()),
+                    }
+                    for trace, algo_data in ftf.items()
+                    for algo, job in algo_data.items()
+                ]
+                df = pd.DataFrame(results_data)
+            elif metric == "Worst FTF":
+                real_jct = get_all_jct_from_raw_log(workload_set)
+                fair_jct = get_fair_jct_from_raw_log(workload_set)
+                ftf = calculate_ftf(real_jct, fair_jct)
+                results_data = [
+                    {
+                        "trace": trace,
+                        "algo": algo,
+                        "res": max(job.values()),
+                    }
+                    for trace, algo_data in ftf.items()
+                    for algo, job in algo_data.items()
+                ]
+                df = pd.DataFrame(results_data)
 
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
-    plt.savefig(f"{save_path}_jct.jpg")
-    plt.savefig(f"{save_path}_jct.pdf")
-    plt.show()
-    plt.clf()
-    print(f"finish plot {save_path}")
+            plot_grouped_bar_v3(axs[i], df, metric, fontsize)
 
-    # 2. Unfair Job Fraction
-    plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+        # Customize the legend
+        handles, labels = axs[0].get_legend_handles_labels()
+        fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
+                   frameon=False)
 
-    for i, workload_set in enumerate(workload_sets):
-        real_jct = get_all_jct_from_raw_log(workload_set)
-        fair_jct = get_fair_jct_from_raw_log(workload_set)
-        ftf = calculate_ftf(real_jct, fair_jct)
-
-        results_data = [
-            {
-                "workload": workload,
-                "algo": algo,
-                "res": sum([i > 1 for i in job.values()]) / len(job.values()),  # job.values() 中大于1的数量
-            }
-            for workload, algo_data in ftf.items()
-            for algo, job in algo_data.items()
-        ]
-
-        df = pd.DataFrame(results_data)
-        all_data, improve, reduce = print_improve_reduce(df, [])
-        print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
-        plot_grouped_bar_v3(axs[i], df, workload_set, "Unfair Fraction", fontsize)
-
-    # Customize the legend
-    handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
-
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
-    plt.savefig(f"{save_path}_unfair.jpg")
-    plt.savefig(f"{save_path}_unfair.pdf")
-    plt.show()
-    plt.clf()
-    print(f"finish plot {save_path}")
-
-    # 3. Worst finish time fairness
-    plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
-
-    for i, workload_set in enumerate(workload_sets):
-        real_jct = get_all_jct_from_raw_log(workload_set)
-        fair_jct = get_fair_jct_from_raw_log(workload_set)
-        ftf = calculate_ftf(real_jct, fair_jct)
-
-        results_data = [
-            {
-                "workload": workload,
-                "algo": algo,
-                "res": max(job.values()),
-            }
-            for workload, algo_data in ftf.items()
-            for algo, job in algo_data.items()
-        ]
-
-        df = pd.DataFrame(results_data)
-        all_data, improve, reduce = print_improve_reduce(df, [])
-        print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
-        plot_grouped_bar_v3(axs[i], df, workload_set, "Worst FTF", fontsize)
-
-    # Customize the legend
-    handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
-
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
-    plt.savefig(f"{save_path}_ftf.jpg")
-    plt.savefig(f"{save_path}_ftf.pdf")
-    plt.show()
-    plt.clf()
-    print(f"finish plot {save_path}")
+        # Adjust layout to prevent clipping of labels and legend
+        plt.tight_layout(rect=[0, 0, 1, 0.93])
+        plt.savefig(f"{save_path}_{workload_set}.jpg")
+        plt.savefig(f"{save_path}_{workload_set}.pdf")
+        plt.show()
+        plt.clf()
+        print(f"finish plot {save_path}_{workload_set}")
 
 
 def plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data, save_path, ylabel='Avg. JCT (hrs)'):
