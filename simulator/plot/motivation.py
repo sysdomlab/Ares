@@ -6,11 +6,11 @@ import matplotlib.patches as patches
 import numpy as np
 from matplotlib.patches import Patch
 
-fontsize = 26
+fontsize = 28
 legend_fontsize = 15
 linewidth = 2
 markersize = 10
-figsize = (6, 3)
+figsize = (7, 4)
 colors = ['#e24933', '#348abd', '#988ed5']
 
 
@@ -19,41 +19,41 @@ def fig1():
     fig, ax = plt.subplots(figsize=figsize)
 
     # 1
-    job1 = patches.Rectangle((0, 1.5), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job1 = patches.Rectangle((0, 3), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[0])
     ax.add_patch(job1)
-    job1 = patches.Rectangle((0, 0), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job1 = patches.Rectangle((0, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job1)
 
     # 2
-    job2 = patches.Rectangle((2, 2), 3, 1, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job2 = patches.Rectangle((2, 4), 3, 2, linewidth=0, edgecolor='black', facecolor=colors[0])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((2, 1), 3, 1, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job2 = patches.Rectangle((2, 2), 3, 2, linewidth=0, edgecolor='black', facecolor=colors[2])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((2, 0), 3, 1, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((2, 0), 3, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job2)
 
     # 3
-    job1 = patches.Rectangle((5, 1.5), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job1 = patches.Rectangle((5, 3), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[2])
     ax.add_patch(job1)
-    job1 = patches.Rectangle((5, 0), 2, 1.5, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job1 = patches.Rectangle((5, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job1)
 
     # 4
-    job1 = patches.Rectangle((7, 0), 1, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job1 = patches.Rectangle((7, 0), 1, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job1)
 
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
-    plt.ylim(0, 3)
+    plt.ylim(0, 6)
     plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
     plt.ylabel('GPU #', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
-    plt.yticks([0.5, 1.5, 2.5], [1, 2, 3], fontsize=fontsize, color='black')
+    plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
 
     # 在横轴上添加箭头
     ax.annotate('', xy=(8.5, 0), xytext=(0, 0),
                 arrowprops=dict(arrowstyle="->", color='black', lw=4))
-    ax.annotate('', xy=(0, 3), xytext=(0, 0),
+    ax.annotate('', xy=(0, 6), xytext=(0, 0),
                 arrowprops=dict(arrowstyle="-", color='black', lw=4))
 
     # 去掉画布的边框
@@ -64,11 +64,11 @@ def fig1():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(2.5, 2.5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(2.5, 5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(3.5, 1.5, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(3.5, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(4.5, 0.5, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(4.5, 1, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
 
     # 添加图例
@@ -94,29 +94,29 @@ def fig2():
     fig, ax = plt.subplots(figsize=figsize)
 
     # 添加Job-1的矩形
-    job1 = patches.Rectangle((0, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job1 = patches.Rectangle((0, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[0])
     ax.add_patch(job1)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((2, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job2 = patches.Rectangle((2, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[2])
     ax.add_patch(job2)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((4, 0), 4, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((4, 0), 4, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job2)
 
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
-    plt.ylim(0, 3)
+    plt.ylim(0, 6)
     plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
     plt.ylabel('GPU #', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
-    plt.yticks([0.5, 1.5, 2.5], [1, 2, 3], fontsize=fontsize, color='black')
+    plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
 
     # 在横轴上添加箭头
     ax.annotate('', xy=(8.5, 0), xytext=(0, 0),
                 arrowprops=dict(arrowstyle="->", color='black', lw=4))
-    ax.annotate('', xy=(0, 3), xytext=(0, 0),
+    ax.annotate('', xy=(0, 6), xytext=(0, 0),
                 arrowprops=dict(arrowstyle="-", color='black', lw=4))
 
     # 去掉画布的边框
@@ -127,11 +127,11 @@ def fig2():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(1, 1.5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(1, 3, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(3, 1.5, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(3, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(6, 1.5, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(6, 3, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
 
     # 添加图例
@@ -186,7 +186,7 @@ def get_metric(exp, metric="cer"):
 def plot_with_range(ax, epochs, metrics, label):
     min_metrics = np.min(metrics, axis=0)
     max_metrics = np.max(metrics, axis=0)
-    mean_metrics = np.average(metrics, axis=0)
+    mean_metrics = np.mean(metrics, axis=0)
 
     ax.plot(epochs[0], mean_metrics, marker='o', label=label)
     ax.fill_between(epochs[0], min_metrics, max_metrics, alpha=0.3)
@@ -211,7 +211,8 @@ def fig3():
 
     for exp, label in app.items():
         epochs, metrics = get_metric(exp)
-        print(f"{exp} {label}, cer: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}")
+        print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
+              f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
         plot_with_range(ax, epochs, metrics, label)
 
     ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
@@ -237,7 +238,8 @@ def fig3():
 
     for exp, label in app.items():
         epochs, metrics = get_metric(exp, "accuracy5")
-        print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}")
+        print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
+              f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
         plot_with_range(ax, epochs, metrics, label)
 
     ax.set_xlabel('Epoch', fontsize=fontsize, color='black')

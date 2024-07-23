@@ -103,12 +103,12 @@ def get_port(job_name):
     return candidate_port
 
 
-def get_cmd(job_name, allocation, rank, acc_bsz, acc_step, model_name=None):
+def get_cmd(job_name, allocation, rank, acc_bsz, acc_step, model_name=None, master_port=None):
     master_address = min(allocation)
     world_size = len(allocation)
     model_name = job_name.split('-')[0] if model_name is None else model_name
     python3 = get_python3_path()
-    master_port = get_port(job_name)
+    master_port = get_port(job_name) if master_port is None else master_port
     max_epoch = APPLICATIONS[model_name].max_epochs
     return " ".join([
         python3, "-u", "framework.py",

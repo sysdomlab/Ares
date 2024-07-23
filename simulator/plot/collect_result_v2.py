@@ -52,7 +52,9 @@ def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
     ax.set_yticklabels(yticks, fontsize=fontsize, color='black')
 
 
-def fig2_sim_all_jct_and_ftf(workload_sets, save_path):
+def fig2_sim_all_jct_and_ftf_v2():
+    workload_sets = ["philly", "saturn", "newtrace"]
+    save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot")
     fontsize = 34
 
     # 1. avg jct
@@ -137,6 +139,141 @@ def fig2_sim_all_jct_and_ftf(workload_sets, save_path):
         all_data, improve, reduce = print_improve_reduce(df, [])
         print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
         plot_grouped_bar_v2(axs[i], df, workload_set, "Worst FTF", fontsize)
+
+    # Customize the legend
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
+
+    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
+    plt.savefig(f"{save_path}_ftf.jpg")
+    plt.savefig(f"{save_path}_ftf.pdf")
+    plt.show()
+    plt.clf()
+    print(f"finish plot {save_path}")
+
+
+def plot_grouped_bar_v3(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21):
+    linewidth = 2
+    markersize = 10
+
+    # Grouping the data by 'workload' and 'algo' and calculating mean JCT
+    grouped_df = src.groupby(['workload', 'algo'])['res'].mean().unstack()
+
+    grouped_df = grouped_df.reindex(columns=sorted(grouped_df.columns, key=lambda x: priority[algo_name[x]]))
+
+    # Plotting the bar chart
+    grouped_df.plot(kind='bar', ax=ax, legend=False)
+
+    if metric == "Unfair Job Fraction":
+        ax.set_ylim(0, 1)
+
+    # Adding labels and title
+    ax.title.set_text(f"{trace_name[wl_set]}")
+    ax.title.set_fontsize(fontsize)
+    ax.title.set_color('black')
+    ax.set_xlabel('Trace ID', fontsize=fontsize, color='black')
+    ax.set_ylabel(f'{metric}', fontsize=fontsize, color='black')
+    ax.set_xticks(ax.get_xticks())
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=fontsize, color='black')
+    ax.set_yticks(ax.get_yticks())
+    ax.set_yticklabels(ax.get_yticks(), fontsize=fontsize, color='black')
+
+    # Set the yticks
+    yticks = ax.get_yticks()
+    stride = len(yticks) // 7 + 1
+    yticks = [float(f"{i:.1f}") for i in yticks[::stride]]
+    ax.set_yticks(yticks)  # Show every 2nd y-tick for example
+    ax.set_yticklabels(yticks, fontsize=fontsize, color='black')
+
+
+def fig2_sim_all_jct_and_ftf_v3():
+    workload_sets = ["philly", "saturn", "newtrace"]
+    save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot")
+    fontsize = 34
+
+    # 1. avg jct
+    plt.style.use('ggplot')
+    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+
+    for i, workload_set in enumerate(workload_sets):
+        results_data = get_data_from_raw_log(workload_set, "avg_jct")
+        df = pd.DataFrame(results_data)
+        all_data, improve, reduce = print_improve_reduce(df, [])
+        print(f"min_val: {reduce.min().min()}, max_val: {reduce.max().max()}")
+        plot_grouped_bar_v3(axs[i], df, workload_set, "Avg. JCT (hrs)", fontsize)
+
+    # Customize the legend
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
+
+    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
+    plt.savefig(f"{save_path}_jct.jpg")
+    plt.savefig(f"{save_path}_jct.pdf")
+    plt.show()
+    plt.clf()
+    print(f"finish plot {save_path}")
+
+    # 2. Unfair Job Fraction
+    plt.style.use('ggplot')
+    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+
+    for i, workload_set in enumerate(workload_sets):
+        real_jct = get_all_jct_from_raw_log(workload_set)
+        fair_jct = get_fair_jct_from_raw_log(workload_set)
+        ftf = calculate_ftf(real_jct, fair_jct)
+
+        results_data = [
+            {
+                "workload": workload,
+                "algo": algo,
+                "res": sum([i > 1 for i in job.values()]) / len(job.values()),  # job.values() 中大于1的数量
+            }
+            for workload, algo_data in ftf.items()
+            for algo, job in algo_data.items()
+        ]
+
+        df = pd.DataFrame(results_data)
+        all_data, improve, reduce = print_improve_reduce(df, [])
+        print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
+        plot_grouped_bar_v3(axs[i], df, workload_set, "Unfair Fraction", fontsize)
+
+    # Customize the legend
+    handles, labels = axs[0].get_legend_handles_labels()
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
+
+    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
+    plt.savefig(f"{save_path}_unfair.jpg")
+    plt.savefig(f"{save_path}_unfair.pdf")
+    plt.show()
+    plt.clf()
+    print(f"finish plot {save_path}")
+
+    # 3. Worst finish time fairness
+    plt.style.use('ggplot')
+    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+
+    for i, workload_set in enumerate(workload_sets):
+        real_jct = get_all_jct_from_raw_log(workload_set)
+        fair_jct = get_fair_jct_from_raw_log(workload_set)
+        ftf = calculate_ftf(real_jct, fair_jct)
+
+        results_data = [
+            {
+                "workload": workload,
+                "algo": algo,
+                "res": max(job.values()),
+            }
+            for workload, algo_data in ftf.items()
+            for algo, job in algo_data.items()
+        ]
+
+        df = pd.DataFrame(results_data)
+        all_data, improve, reduce = print_improve_reduce(df, [])
+        print(f"min_val: {improve.min().min()}, max_val: {improve.max().max()}")
+        plot_grouped_bar_v3(axs[i], df, workload_set, "Worst FTF", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
@@ -647,7 +784,6 @@ def sensitivity():
         """
         # Group the dataframe by 'workload' and 'algo', calculate the mean of 'res' and unstack the dataframe
         tmp_df = _df.groupby(['workload', 'algo'])['res'].mean().unstack()
-        print(tmp_df)
         # Filter the dataframe for the given algorithm
         tmp_df = tmp_df[algo]
         # Return the median and the 25th and 75th percentiles
@@ -683,14 +819,15 @@ def sensitivity():
             percentiles_25.append(percentile_25_val)
             percentiles_75.append(percentile_75_val)
 
-        # Calculate the lower and upper errors for the error bars
-        lower_errors = np.array(medians) - np.array(percentiles_25)
-        upper_errors = np.array(percentiles_75) - np.array(medians)
-        asymmetric_error = [lower_errors, upper_errors]
+        # Convert lists to numpy arrays for easier manipulation
+        thresholds = np.arange(0.55, 1.0, 0.05)
+        medians = np.array(medians)
+        percentiles_25 = np.array(percentiles_25)
+        percentiles_75 = np.array(percentiles_75)
 
-        # Plot the line with error bars
-        plt.errorbar(np.arange(0.55, 1.0, 0.05), medians, yerr=asymmetric_error, fmt=f'-{marker}', capsize=5,
-                     capthick=2, elinewidth=2, label=workload_name)
+        # Plot the line and the shaded region
+        plt.plot(thresholds, medians, f'-{marker}', label=workload_name)
+        plt.fill_between(thresholds, percentiles_25, percentiles_75, alpha=0.2)
 
     # Add labels to the plot
     plt.xlabel('Efficiency Threshold', fontsize=labelsize, color='black')
@@ -709,16 +846,17 @@ if __name__ == '__main__':
     os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-16nodes")
 
     # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
-    workload_sets = ["philly", "saturn", "newtrace"]
-    # for workload_set in workload_sets:
-    #     fig2_sim_all_jct_and_ftf(workload_set)
-    # fig2_sim_all_jct_and_ftf(workload_sets, os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot"))
+    # fig2_sim_all_jct_and_ftf_v2()
+    fig2_sim_all_jct_and_ftf_v3()
+
     # fig1_physical_jct_ftf_with_err_bar_v3()
+
     # fig3_ftf_cdf()
+
     # fig4_visualized_schedules()
 
     # os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-scale")
     # overhead()
 
-    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-sensitivity")
-    sensitivity()
+    # os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-sensitivity")
+    # sensitivity()
