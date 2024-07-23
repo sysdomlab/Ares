@@ -70,7 +70,8 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
+               frameon=False)
 
     # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
     plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
@@ -106,7 +107,8 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
+               frameon=False)
 
     # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
     plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
@@ -142,7 +144,8 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
+    fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
+               frameon=False)
 
     # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
     plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
@@ -153,12 +156,9 @@ def fig2_sim_all_jct_and_ftf_v2():
     print(f"finish plot {save_path}")
 
 
-def plot_grouped_bar_v3(ax, src, metric, fontsize=32):
-    colors = ['#e24a33', '#348abd', '#988ed5', '#777777', "#fbc15e", "#8eba41", "#ffb4b8"]  # 定义每个算法的颜色
-
+def plot_grouped_bar_v3(ax, src, metric, colors, fontsize=32):
     # Grouping the data by 'algo' and calculating median and percentiles across all workloads
     grouped_df = src.groupby('algo')['res'].median()
-    print(grouped_df)
     error_lower = src.groupby('algo')['res'].quantile(0.25)
     error_upper = src.groupby('algo')['res'].quantile(0.75)
 
@@ -168,22 +168,18 @@ def plot_grouped_bar_v3(ax, src, metric, fontsize=32):
     error_upper = error_upper.reindex(grouped_df.index)
 
     # Plotting the bar chart with error bars
-    grouped_df.plot(kind='bar', ax=ax, legend=False, color=colors,
-                    yerr=[grouped_df - error_lower, error_upper - grouped_df], capsize=4)
+    bars = grouped_df.plot(kind='bar', ax=ax, legend=False, color=colors,
+                           yerr=[grouped_df - error_lower, error_upper - grouped_df], capsize=4)
 
     if metric == "Unfair Fraction":
         ax.set_ylim(0, 1)
 
-    # Adding labels and title
-    ax.title.set_text(f"{metric}")
-    ax.title.set_fontsize(fontsize)
-    ax.title.set_color('black')
-    ax.set_xlabel('Algorithm', fontsize=fontsize, color='black')
     ax.set_ylabel(f'{metric}', fontsize=fontsize, color='black')
-    ax.set_xticks(ax.get_xticks())
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=fontsize, color='black')
     ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels(ax.get_yticks(), fontsize=fontsize, color='black')
+    ax.set_xticks(ax.get_xticks())
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=fontsize, color='black')
+    ax.set_xlabel('Algorithm', fontsize=fontsize, color='black')
 
     # Set the yticks
     yticks = ax.get_yticks()
@@ -192,9 +188,12 @@ def plot_grouped_bar_v3(ax, src, metric, fontsize=32):
     ax.set_yticks(yticks)  # Show every n-th y-tick
     ax.set_yticklabels(yticks, fontsize=fontsize, color='black')
 
+    return bars
+
 
 def fig2_sim_all_jct_and_ftf_v3():
     algorithms = ["Ares", "Gavel", "Themis", "AlloX", "Tiresias", "Optimus", "Pollux"]
+    colors = ['#e24a33', '#348abd', '#988ed5', '#777777', "#fbc15e", "#8eba41", "#ffb4b8"]
     workload_sets = ["philly", "saturn", "newtrace"]
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot")
     fontsize = 34
@@ -210,7 +209,6 @@ def fig2_sim_all_jct_and_ftf_v3():
             if metric == "Avg. JCT (hrs)":
                 results_data = get_data_from_raw_log(workload_set, "avg_jct")
                 df = pd.DataFrame(results_data)
-                # print(df)
             elif metric == "Unfair Fraction":
                 real_jct = get_all_jct_from_raw_log(workload_set)
                 fair_jct = get_fair_jct_from_raw_log(workload_set)
@@ -240,12 +238,12 @@ def fig2_sim_all_jct_and_ftf_v3():
                 ]
                 df = pd.DataFrame(results_data)
 
-            plot_grouped_bar_v3(axs[i], df, metric, fontsize)
+            bars = plot_grouped_bar_v3(axs[i], df, metric, colors, fontsize)
 
-        # Customize the legend
-        handles, labels = axs[0].get_legend_handles_labels()
-        fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
-                   frameon=False)
+        # Create legend for all subplots
+        handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in colors]
+        fig.legend(handles, algorithms, ncol=len(algorithms), loc='upper center',
+                   bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
 
         # Adjust layout to prevent clipping of labels and legend
         plt.tight_layout(rect=[0, 0, 1, 0.93])
@@ -253,7 +251,7 @@ def fig2_sim_all_jct_and_ftf_v3():
         plt.savefig(f"{save_path}_{workload_set}.pdf")
         plt.show()
         plt.clf()
-        print(f"finish plot {save_path}_{workload_set}")
+        print(f"Finished plot {save_path}_{workload_set}")
 
 
 def plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data, save_path, ylabel='Avg. JCT (hrs)'):
