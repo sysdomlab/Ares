@@ -41,13 +41,11 @@ class ARESPolicy(object):
         # print(f">>> prev_allocations: {prev_allocations}")
 
         # 1. 检查是否有新到达或者结束的任务，如果没有则直接返回
-        has_new_job = self.gps_sys.check_and_add_new_job(jobs)
+        has_new_job = self.gps_sys.check_and_update(jobs, self._time_fn())
         has_finished_job = (collections.Counter(sum(self.allocations.values(), []))
                             != collections.Counter(sum(prev_allocations.values(), [])))
 
         # 2. 更新理想公平参考系统
-        self.gps_sys.do_forward(self._time_fn(), has_new_job)  # 理想公平调度器执行到当前时间，更新理想公平分配的各任务进度
-
         if not has_new_job and not has_finished_job:
             # print(f">>> no new job or finished job, return prev_allocations: {prev_allocations}")
             return prev_allocations, len(nodes)  # todo 如果吞吐量、完成时间变化，也需要调度
@@ -135,13 +133,13 @@ class GPSSystem:
         """
         fair_share = min(fair_share, fair_job["max_replicas"])
         if int(fair_share) == 0:
-            step_time = fair_job["step_time"][1] / fair_share
+            step_time = fair_job["step_times"][1] / fair_share
         elif fair_share != int(fair_share):
             ceil, floor = int(fair_share + 1), int(fair_share)
-            step_time = ((fair_job["step_time"][ceil] - fair_job["step_time"][floor]) * (fair_share - floor)
-                         + fair_job["step_time"][floor])
+            step_time = ((fair_job["step_times"][ceil] - fair_job["step_times"][floor]) * (fair_share - floor)
+                         + fair_job["step_times"][floor])
         else:
-            step_time = fair_job["step_time"][int(fair_share)]
+            step_time = fair_job["step_times"][int(fair_share)]
         return step_time
 
     def _add_job(self, key, job: JobInfo):
@@ -177,71 +175,77 @@ class GPSSystem:
             "arrival_time": self.time,  # job.creation_timestamp
             "remaining_iter": completion_iter,
             "completion_time": None,
-            "step_time": step_time,
+            "step_times": step_time,
             "max_replicas": max_replicas,
             "scale_factor": scale_factor,
+            "rescale_time": job.application.rescale_time,
         }
 
-    def do_forward(self, cur_time, has_new_job):
-        self.time += 30 if has_new_job or self.has_finished_job else 0
-        self.has_finished_job = False
-        run_time = cur_time - self.time
+    def _update_to_now(self, elapsed_time):
         active_jobs = {k: j for k, j in self.fair_jobs.items() if j["remaining_iter"] > 0}
-        if len(active_jobs) == 0:
-            return
+        while active_jobs and elapsed_time:
+            fair_share = self.total_gpus / len(active_jobs)
+            for key, job in active_jobs.items():
+                job["step_time"] = self._get_step_time_with_fair_share(job, fair_share)
+                job["v_finish_time"] = job["remaining_iter"] * job["step_time"] + job["rescale_time"]
 
-        fair_share = self.total_gpus / len(active_jobs)
-        for key, job in active_jobs.items():
-            step_time = self._get_step_time_with_fair_share(job, fair_share)
-            finished_iter = run_time / step_time
-            virtual_finish_time = job["remaining_iter"] * step_time
-            job["remaining_iter"] = max(job["remaining_iter"] - finished_iter, 0)
-            if job["remaining_iter"] == 0:
-                self.fair_jobs[key]["completion_time"] = self.time + virtual_finish_time
-                self.has_finished_job = True
-        self.time += run_time
+            time_to_first_completion = min((min([job["v_finish_time"] for job in active_jobs.values()]) // 60 + 1) * 60,
+                                           elapsed_time)
+            to_del_key = []
+            for key, job in active_jobs.items():
+                finished_iter = max(0, (time_to_first_completion - job["rescale_time"]) / job["step_time"])
+                job["remaining_iter"] = max(job["remaining_iter"] - finished_iter, 0)
+
+                if job["remaining_iter"] == 0:
+                    to_del_key.append(key)
+            for key in to_del_key:
+                del active_jobs[key]
+            self.time += time_to_first_completion
+            elapsed_time -= time_to_first_completion
 
     def _sim_forward(self):
         active_jobs = {k: copy.deepcopy(j) for k, j in self.fair_jobs.items() if j["remaining_iter"] > 0}
         virtual_time = self.time
-        self.finished_job_order = [k for k, j in self.fair_jobs.items() if j["remaining_iter"] <= 0]
-        self.finished_job_order = sorted(self.finished_job_order, key=lambda k: self.fair_jobs[k]["completion_time"])
+        self.finished_job_order = sorted(
+            [k for k, j in self.fair_jobs.items() if j["remaining_iter"] <= 0],
+            key=lambda k: self.fair_jobs[k]["completion_time"]
+        )
         while active_jobs:
             fair_share = self.total_gpus / len(active_jobs)
-            virtual_skip_time = 1 << 32
             for key, job in active_jobs.items():
-                step_time = self._get_step_time_with_fair_share(job, fair_share)
-                v_finish_time = job["remaining_iter"] * step_time
-                virtual_skip_time = min(virtual_skip_time, v_finish_time)
+                job["step_time"] = self._get_step_time_with_fair_share(job, fair_share)
+                job["v_finish_time"] = job["remaining_iter"] * job["step_time"] + job["rescale_time"]
 
-            virtual_skip_time += 30
-            virtual_skip_time = (virtual_skip_time // 60 + 1) * 60
-            # print(f">>> virtual_time: {virtual_time}, virtual_skip_time: {virtual_skip_time}")
+            time_to_first_completion = (min([job["v_finish_time"] for job in active_jobs.values()]) // 60 + 1) * 60
+            # print(f">>> virtual_time: {virtual_time}, time_to_first_completion: {time_to_first_completion}")
             to_del_key = []
             for key, job in active_jobs.items():
-                step_time = self._get_step_time_with_fair_share(job, fair_share)
-                finished_iter = (virtual_skip_time - 30) / step_time
-                v_finish_time = job["remaining_iter"] * step_time
+                finished_iter = max(0, (time_to_first_completion - job["rescale_time"]) / job["step_time"])
                 job["remaining_iter"] = max(job["remaining_iter"] - finished_iter, 0)
 
                 if job["remaining_iter"] == 0:
-                    self.fair_jobs[key]["completion_time"] = virtual_time + v_finish_time
+                    self.fair_jobs[key]["completion_time"] = virtual_time + job["v_finish_time"]
                     # print(f"append {key} to finished_job_order")
                     self.finished_job_order.append(key)
                     to_del_key.append(key)
-            virtual_time = virtual_time + virtual_skip_time
             for key in to_del_key:
                 del active_jobs[key]
+            virtual_time += time_to_first_completion
 
         print(f">>> finished_job_order: {self.finished_job_order}")
 
-    def check_and_add_new_job(self, jobs):
+    def check_and_update(self, jobs, cur_time):
         # 检查并新增任务
         has_new_job = False
+        new_job = []
         for key, job in jobs.items():
             if key not in self.fair_jobs.keys():
                 has_new_job = True
-                self._add_job(key, job)
+                new_job.append([key, job])
+        if has_new_job:
+            self._update_to_now(cur_time - self.time)
+        for key, job in new_job:
+            self._add_job(key, job)
         if has_new_job:
             # 计算理想公平分配下的完成时间, 按照完成时间排序
             self._sim_forward()

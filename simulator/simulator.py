@@ -171,14 +171,7 @@ class Job(object):
         if placement:
             if len(placement) != len(self.placement):
                 # ignore re-allocating delay if it is caused by the limit of profiling
-                self.rescale_time = {
-                    "bert": 120,
-                    "cifar10": 50,
-                    "deepspeech2": 25,
-                    "imagenet": 250,
-                    "ncf": 15,
-                    "yolov3": 80,
-                }[self.application.name]  # Start re-scale countdown.
+                self.rescale_time = self.application.rescale_time  # Start re-scale countdown.
                 self.num_restarts = self.num_restarts + 1 if self.num_restarts is not None else 0
             self.placement = tuple(placement)
             self.update_local_bsz(self.placement)
@@ -592,12 +585,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, default="./workload/philly/workload-1.csv",
                         help="path to workload csv")
-    parser.add_argument("--policy", type=str, default="gandiva", choices=get_all_policies(),
+    parser.add_argument("--policy", type=str, default="ares", choices=get_all_policies(),
                         help="scheduler policy")
     parser.add_argument("--nodes", type=str,
                         default=" ".join([f"{i}" for i in range(16)]),
                         help="list of node IPs")
-    parser.add_argument("--interval", type=int, default=360,
+    parser.add_argument("--interval", type=int, default=60,
                         help="scheduling interval in seconds")
     parser.add_argument("--num-gpus", type=int, default=4,
                         help="number of GPUs per node")
