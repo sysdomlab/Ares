@@ -30,8 +30,18 @@ def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
     # Plotting the bar chart
     grouped_df.plot(kind='bar', ax=ax, legend=False)
 
-    if metric == "Unfair Job Fraction":
+    if metric == "Unfair Fraction":
         ax.set_ylim(0, 1)
+
+    if metric == "Worst FTF":
+        # Use logarithmic scale for y-axis
+        ax.set_yscale('log')
+
+        # Limiting the y-axis to the range 0 to 100
+        # ax.set_ylim(0, 100)
+        yticks = [float(f"{i:.1f}") for i in [1, 10, 100]]
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticks, fontsize=fontsize, color='black')
 
     # Adding labels and title
     ax.title.set_text(f"{trace_name[wl_set]}")
@@ -55,11 +65,13 @@ def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
 def fig2_sim_all_jct_and_ftf_v2():
     workload_sets = ["philly", "saturn", "newtrace"]
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot")
-    fontsize = 34
+    fontsize = 30
+    figsize = (33, 5)
+    rect = [0, 0, 1, 0.9]
 
     # 1. avg jct
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+    fig, axs = plt.subplots(1, 3, figsize=figsize)  # Create 1 row and 3 columns of subplots
 
     for i, workload_set in enumerate(workload_sets):
         results_data = get_data_from_raw_log(workload_set, "avg_jct")
@@ -73,8 +85,7 @@ def fig2_sim_all_jct_and_ftf_v2():
     fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
                frameon=False)
 
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=rect)  # Adjust layout to prevent clipping of labels and legend
     plt.savefig(f"{save_path}_jct.jpg")
     plt.savefig(f"{save_path}_jct.pdf")
     plt.show()
@@ -83,7 +94,7 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # 2. Unfair Job Fraction
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+    fig, axs = plt.subplots(1, 3, figsize=figsize)  # Create 1 row and 3 columns of subplots
 
     for i, workload_set in enumerate(workload_sets):
         real_jct = get_all_jct_from_raw_log(workload_set)
@@ -110,8 +121,7 @@ def fig2_sim_all_jct_and_ftf_v2():
     fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
                frameon=False)
 
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=rect)  # Adjust layout to prevent clipping of labels and legend
     plt.savefig(f"{save_path}_unfair.jpg")
     plt.savefig(f"{save_path}_unfair.pdf")
     plt.show()
@@ -120,7 +130,7 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # 3. Worst finish time fairness
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+    fig, axs = plt.subplots(1, 3, figsize=figsize)  # Create 1 row and 3 columns of subplots
 
     for i, workload_set in enumerate(workload_sets):
         real_jct = get_all_jct_from_raw_log(workload_set)
@@ -147,8 +157,7 @@ def fig2_sim_all_jct_and_ftf_v2():
     fig.legend(handles, labels, ncol=7, loc='upper center', bbox_to_anchor=(0.5, 1.06), fontsize=fontsize,
                frameon=False)
 
-    # plt.tight_layout(rect=[0, 0, 1, 0.95])  # Adjust layout to prevent clipping of labels and legend
-    plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=rect)  # Adjust layout to prevent clipping of labels and legend
     plt.savefig(f"{save_path}_ftf.jpg")
     plt.savefig(f"{save_path}_ftf.pdf")
     plt.show()
@@ -156,7 +165,7 @@ def fig2_sim_all_jct_and_ftf_v2():
     print(f"finish plot {save_path}")
 
 
-def plot_grouped_bar_v3(ax, src, metric, colors, fontsize=32):
+def plot_grouped_bar_v3(ax, src, metric, colors, fontsize):
     # Grouping the data by 'algo' and calculating median and percentiles across all workloads
     grouped_df = src.groupby('algo')['res'].median()
     error_lower = src.groupby('algo')['res'].quantile(0.25)
@@ -168,7 +177,7 @@ def plot_grouped_bar_v3(ax, src, metric, colors, fontsize=32):
     error_upper = error_upper.reindex(grouped_df.index)
 
     # Plotting the bar chart with error bars
-    bars = grouped_df.plot(kind='bar', ax=ax, legend=False, color=colors,
+    bars = grouped_df.plot(kind='bar', ax=ax, legend=False, color=colors, width=0.5,
                            yerr=[grouped_df - error_lower, error_upper - grouped_df], capsize=4)
 
     if metric == "Unfair Fraction":
@@ -177,9 +186,11 @@ def plot_grouped_bar_v3(ax, src, metric, colors, fontsize=32):
     ax.set_ylabel(f'{metric}', fontsize=fontsize, color='black')
     ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels(ax.get_yticks(), fontsize=fontsize, color='black')
-    ax.set_xticks(ax.get_xticks())
-    ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=fontsize, color='black')
-    ax.set_xlabel('Algorithm', fontsize=fontsize, color='black')
+
+    # Remove x-axis ticks and labels
+    ax.set_xticks([])
+    ax.set_xticklabels([])
+    ax.set_xlabel('', fontsize=fontsize, color='black')
 
     # Set the yticks
     yticks = ax.get_yticks()
@@ -196,18 +207,23 @@ def fig2_sim_all_jct_and_ftf_v3():
     colors = ['#e24a33', '#348abd', '#988ed5', '#777777', "#fbc15e", "#8eba41", "#ffb4b8"]
     workload_sets = ["philly", "saturn", "newtrace"]
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot")
-    fontsize = 34
+    fontsize = 28
 
-    metrics = ["Avg. JCT (hrs)", "Unfair Fraction", "Worst FTF"]
+    metrics = ["Avg. JCT (hrs)", "P99 JCT (hrs)", "Unfair Fraction", "Worst FTF", "Makespan (hrs)",
+               # "Avg. job restarts"
+               ]
 
     plt.style.use('ggplot')
 
     for workload_set in workload_sets:
-        fig, axs = plt.subplots(1, 3, figsize=(33, 6))  # Create 1 row and 3 columns of subplots
+        fig, axs = plt.subplots(1, len(metrics), figsize=(28, 4))  # Create 1 row and 3 columns of subplots
 
         for i, metric in enumerate(metrics):
             if metric == "Avg. JCT (hrs)":
                 results_data = get_data_from_raw_log(workload_set, "avg_jct")
+                df = pd.DataFrame(results_data)
+            if metric == "P99 JCT (hrs)":
+                results_data = get_data_from_raw_log(workload_set, "p99_jct")
                 df = pd.DataFrame(results_data)
             elif metric == "Unfair Fraction":
                 real_jct = get_all_jct_from_raw_log(workload_set)
@@ -237,6 +253,12 @@ def fig2_sim_all_jct_and_ftf_v3():
                     for algo, job in algo_data.items()
                 ]
                 df = pd.DataFrame(results_data)
+            elif metric == "Makespan (hrs)":
+                results_data = get_data_from_raw_log(workload_set, "makespan")
+                df = pd.DataFrame(results_data)
+            elif metric == "Avg. job restarts":
+                results_data = get_data_from_raw_log(workload_set, "restarts")
+                df = pd.DataFrame(results_data)
 
             bars = plot_grouped_bar_v3(axs[i], df, metric, colors, fontsize)
 
@@ -246,7 +268,7 @@ def fig2_sim_all_jct_and_ftf_v3():
                    bbox_to_anchor=(0.5, 1.06), fontsize=fontsize, frameon=False)
 
         # Adjust layout to prevent clipping of labels and legend
-        plt.tight_layout(rect=[0, 0, 1, 0.93])
+        plt.tight_layout(rect=[0, 0, 1, 0.85])
         plt.savefig(f"{save_path}_{workload_set}.jpg")
         plt.savefig(f"{save_path}_{workload_set}.pdf")
         plt.show()
@@ -313,93 +335,68 @@ def fig1_physical_jct_ftf_with_err_bar():
     testbed_path = "/home/cchen/yfliu/ares/bkp/testbed/"
     simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
                        "Simulator-Fidelity/workloads-4h-40j/workload-6/")
-    # algorithms = ['Ares', 'Optimus', 'Pollux', 'Tiresias']
-    algorithms = ['Ares', 'Themis', 'Tiresias', 'Pollux']
+    algorithms = ["Ares", "Gavel", "Themis", "AlloX", "Tiresias", "Optimus", "Pollux"]
+    algos = [algo_name[i] for i in algorithms]
 
-    # 1. JCT Comparison
-    ares_testbed_jct = [get_avg_jct(testbed_path + f"ares/logs/ares_{i}.log") for i in range(1, 4)]
-    ares_simulation_jct = [get_avg_jct(simulation_path + "ares.txt")] * 3
-    # optimus_testbed_jct = [get_avg_jct(testbed_path + f"optimus/logs/optimus_{i}.log") for i in range(1, 4)]
-    # optimus_simulation_jct = [get_avg_jct(simulation_path + "optimus.txt")] * 3
-    themis_testbed_jct = [get_avg_jct(
-        testbed_path + f"finish_time_fairness_perf/logs/finish_time_fairness_perf_{i}.log") for i in range(1, 4)]
-    themis_simulation_jct = [get_avg_jct(simulation_path + "finish_time_fairness_perf.txt")] * 3
-    tiresias_testbed_jct = [get_avg_jct(testbed_path + f"tiresias/logs/tiresias_{i}.log") for i in range(1, 4)]
-    tiresias_simulation_jct = [get_avg_jct(simulation_path + "tiresias.txt")] * 3
-    pollux_testbed_jct = [get_avg_jct(testbed_path + f"pollux/logs/pollux_{i}.log") for i in range(1, 4)]
-    pollux_simulation_jct = [get_avg_jct(simulation_path + "pollux.txt")] * 3
-    # testbed_data = [ares_testbed_jct, optimus_testbed_jct, pollux_testbed_jct, tiresias_testbed_jct]
-    # simulation_data = [ares_simulation_jct, optimus_simulation_jct, pollux_simulation_jct, tiresias_simulation_jct]
-    testbed_data = [ares_testbed_jct, themis_testbed_jct, tiresias_testbed_jct, pollux_testbed_jct]
-    simulation_data = [ares_simulation_jct, themis_simulation_jct, tiresias_simulation_jct, pollux_simulation_jct]
-    print(testbed_data)
-    print(simulation_data)
+    # 1. Avg JCT    0.038653811331591466
+    testbed_data = [
+        [get_avg_jct(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        for algo in algos
+    ]
+    simulation_data = [
+        [get_avg_jct(simulation_path + f"{algo}.txt")] * 3
+        for algo in algos
+    ]
+    # print(f"testbed_jct: {testbed_data}")
+    # print(f"simulation_jct: {simulation_data}")
+
     avg_data = [np.average(i) for i in testbed_data]
     improvement = [(i - avg_data[0]) / i for i in avg_data]
-    print(avg_data)
-    print(improvement)
-    # input()
+    # print(avg_data)
+    # print(improvement)
 
     plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data,
                             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"jct_comparison"))
 
-    # 2. FTF Comparison
-    def compute_avg_ftf(a, b=simulation_path + "ares.txt"):
-        job_ftf = calculate_ftf_in_algo(
-            get_all_jct(a),
-            get_fair_jct(b)
-        )
-        return sum(job_ftf.values()) / len(job_ftf)
-        # return sum([i > 1 for i in job_ftf.values()]) / len(job_ftf.values())
-        # return max(job_ftf.values())
+    # 2. unfair    0.09096670332638891
+    def compute_unfair(a, b=simulation_path + "ares.txt"):
+        job_ftf = calculate_ftf_in_algo(get_all_jct(a), get_fair_jct(b))
+        return sum([i > 1 for i in job_ftf.values()]) / len(job_ftf.values())
 
-    ares_testbed_ftf = [compute_avg_ftf(testbed_path + f"ares/logs/ares_{i}.log")
-                        for i in range(1, 4)]
-    ares_simulation_ftf = [compute_avg_ftf(simulation_path + "ares.txt")] * 3
-    # optimus_testbed_ftf = [compute_avg_ftf(testbed_path + f"optimus/logs/optimus_{i}.log")
-    #                        for i in range(1, 4)]
-    # optimus_simulation_ftf = [compute_avg_ftf(simulation_path + "optimus.txt")] * 3
-    themis_testbed_ftf = [compute_avg_ftf(
-        testbed_path + f"finish_time_fairness_perf/logs/finish_time_fairness_perf_{i}.log") for i in range(1, 4)]
-    themis_simulation_ftf = [compute_avg_ftf(simulation_path + "finish_time_fairness_perf.txt")] * 3
-    tiresias_testbed_ftf = [compute_avg_ftf(testbed_path + f"tiresias/logs/tiresias_{i}.log") for i in range(1, 4)]
-    tiresias_simulation_ftf = [compute_avg_ftf(simulation_path + "tiresias.txt")] * 3
-    pollux_testbed_ftf = [compute_avg_ftf(testbed_path + f"pollux/logs/pollux_{i}.log") for i in range(1, 4)]
-    pollux_simulation_ftf = [compute_avg_ftf(simulation_path + "pollux.txt")] * 3
-    testbed_data = [ares_testbed_ftf, themis_testbed_ftf, tiresias_testbed_ftf, pollux_testbed_ftf]
-    simulation_data = [ares_simulation_ftf, themis_simulation_ftf, tiresias_simulation_ftf, pollux_simulation_ftf]
-    print(testbed_data)
-    print(simulation_data)
+    testbed_data = [
+        [compute_unfair(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        for algo in algos
+    ]
+    simulation_data = [
+        [compute_unfair(simulation_path + f"{algo}.txt")] * 3
+        for algo in algos
+    ]
+    # print(f"testbed_unfair: {testbed_data}")
+    # print(f"simulation_unfair: {simulation_data}")
 
     plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data,
                             os.path.join(os.path.abspath(os.path.dirname(__file__)), f"ftf_comparison"),
-                            ylabel='ftf_comparison')
+                            ylabel='Unfair Fraction')
 
-    # 3. Makespan Comparison
-    ares_testbed_makespan = [get_makespan(testbed_path + f"ares/logs/ares_{i}.log") for i in range(1, 4)]
-    ares_simulation_makespan = [get_makespan(simulation_path + "ares.txt")] * 3
-    # optimus_testbed_makespan = [get_makespan(testbed_path + f"optimus/logs/optimus_{i}.log") for i in range(1, 4)]
-    # optimus_simulation_makespan = [get_makespan(simulation_path + "optimus.txt")] * 3
-    themis_testbed_makespan = [get_makespan(
-        testbed_path + f"finish_time_fairness_perf/logs/finish_time_fairness_perf_{i}.log") for i in range(1, 4)]
-    themis_simulation_makespan = [get_makespan(simulation_path + "finish_time_fairness_perf.txt")] * 3
-    tiresias_testbed_makespan = [get_makespan(testbed_path + f"tiresias/logs/tiresias_{i}.log") for i in range(1, 4)]
-    tiresias_simulation_makespan = [get_makespan(simulation_path + "tiresias.txt")] * 3
-    pollux_testbed_makespan = [get_makespan(testbed_path + f"pollux/logs/pollux_{i}.log") for i in range(1, 4)]
-    pollux_simulation_makespan = [get_makespan(simulation_path + "pollux.txt")] * 3
-    testbed_data = [ares_testbed_makespan, themis_testbed_makespan, tiresias_testbed_makespan, pollux_testbed_makespan]
-    simulation_data = [ares_simulation_makespan, themis_simulation_makespan, tiresias_simulation_makespan,
-                       pollux_simulation_makespan]
-    print(testbed_data)
-    print(simulation_data)
-    avg_data = [np.average(i) for i in testbed_data]
-    improvement = [(i - avg_data[0]) / i for i in avg_data]
-    print(avg_data)
-    print(improvement)
+    # 3. worst    0.21804584949554345
+    def compute_worst_ftf(a, b=simulation_path + "ares.txt"):
+        job_ftf = calculate_ftf_in_algo(get_all_jct(a), get_fair_jct(b))
+        return max(job_ftf.values())
+
+    testbed_data = [
+        [compute_worst_ftf(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        for algo in algos
+    ]
+    simulation_data = [
+        [compute_worst_ftf(simulation_path + f"{algo}.txt")] * 3
+        for algo in algos
+    ]
+    # print(f"testbed_worst: {testbed_data}")
+    # print(f"simulation_worst: {simulation_data}")
 
     plot_grouped_err_bar_v2(algorithms, testbed_data, simulation_data,
-                            os.path.join(os.path.abspath(os.path.dirname(__file__)), f"makespan_comparison"),
-                            ylabel='Makespan (hrs)')
+                            os.path.join(os.path.abspath(os.path.dirname(__file__)), f"worst_comparison"),
+                            ylabel='Worst FTF')
 
 
 def plot_grouped_err_bar_v3(ax, algorithms, testbed_data, colors, hatches, ylabel='Avg. JCT (hrs)'):
@@ -409,7 +406,7 @@ def plot_grouped_err_bar_v3(ax, algorithms, testbed_data, colors, hatches, ylabe
     testbed_jct_errors = np.array(testbed_jct_errors).T
 
     x = np.arange(len(algorithms))
-    width = 1  # 设置柱子宽度为1以减少空隙
+    # width = 0.5  # 设置柱子宽度为1以减少空隙
 
     rects = []
     for i, (mean, err, color, hatch) in enumerate(zip(testbed_jct_means, testbed_jct_errors.T, colors, hatches)):
@@ -419,8 +416,23 @@ def plot_grouped_err_bar_v3(ax, algorithms, testbed_data, colors, hatches, ylabe
                       label=algorithms[i],
                       color=color,
                       # edgecolor=color,
-                      capsize=22, error_kw={'elinewidth': 3})
+                      capsize=10,
+                      error_kw={'elinewidth': 3})
         rects.append(rect)
+
+    if ylabel == "Unfair Fraction":
+        ax.set_ylim(0, 1)
+        ax.set_yticks(np.arange(0, 1.1, 0.5))
+
+    if ylabel == "Worst FTF":
+        # Use logarithmic scale for y-axis
+        ax.set_yscale('log')
+
+        # Limiting the y-axis to the range 0 to 100
+        # ax.set_ylim(0, 100)
+        yticks = [float(f"{i:.1f}") for i in [1, 10, 100]]
+        ax.set_yticks(yticks)
+        ax.set_yticklabels(yticks, fontsize=fontsize, color='black')
 
     ax.set_ylabel(ylabel, fontsize=fontsize, color='black')
     ax.set_xticks([])
@@ -432,14 +444,14 @@ def fig1_physical_jct_ftf_with_err_bar_v3():
     testbed_path = "/home/cchen/yfliu/ares/bkp/testbed/"
     simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
                        "Simulator-Fidelity/workloads-4h-40j/workload-6/")
-    algos = ['ares', 'finish_time_fairness_perf', 'tiresias', 'pollux']
-    algorithms = [algo_name[i] for i in algos]
-    colors = ['#e24a33', '#3489bf', '#988ed5', '#777777']  # 定义每个算法的颜色
-    hatches = ['/', '\\', '|', '-']  # 定义每个算法的花纹
+    algorithms = ["Ares", "Gavel", "Themis", "AlloX", "Tiresias", "Optimus", "Pollux"]
+    algos = [algo_name[i] for i in algorithms]
+    colors = ['#e24a33', '#348abd', '#988ed5', '#777777', "#fbc15e", "#8eba41", "#ffb4b8"]
+    hatches = ['', '/', '\\', '|', '-', "", ""]  # 定义每个算法的花纹
 
     # 1. jct
     data_jct = [
-        [get_avg_jct(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        [get_avg_jct(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 3)]
         for algo in algos
     ]
     print(f"data_jct: {data_jct}")
@@ -450,42 +462,43 @@ def fig1_physical_jct_ftf_with_err_bar_v3():
         return sum([i > 1 for i in job_ftf.values()]) / len(job_ftf.values())
 
     data_unfair = [
-        [compute_unfair(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+        [compute_unfair(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 3)]
         for algo in algos
     ]
     print(f"data_unfair: {data_unfair}")
 
     # 3. worst
-    # def compute_worst_ftf(a, b=simulation_path + "ares.txt"):
-    #     job_ftf = calculate_ftf_in_algo(get_all_jct(a), get_fair_jct(b))
-    #     return max(job_ftf.values())
-    #
-    # data_worst_ftf = [
-    #     [compute_worst_ftf(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
-    #     for algo in algos
-    # ]
-    # print(f"data_worst_ftf: {data_worst_ftf}")
+    def compute_worst_ftf(a, b=simulation_path + "ares.txt"):
+        job_ftf = calculate_ftf_in_algo(get_all_jct(a), get_fair_jct(b))
+        return max(job_ftf.values())
 
-    # 3. makespan
-    data_makespan = [
-        [get_makespan(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 4)]
+    data_worst_ftf = [
+        [compute_worst_ftf(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 3)]
         for algo in algos
     ]
-    print(f"data_makespan: {data_makespan}")
+    print(f"data_worst_ftf: {data_worst_ftf}")
 
-    # plt.style.use('ggplot')
+    # # 3. makespan
+    # data_makespan = [
+    #     [get_makespan(testbed_path + f"{algo}/logs/{algo}_{i}.log") for i in range(1, 3)]
+    #     for algo in algos
+    # ]
+    # print(f"data_makespan: {data_makespan}")
+
+    plt.style.use('ggplot')
     fig, axs = plt.subplots(1, 3, figsize=(14, 4), sharey=False)
 
     rects1 = plot_grouped_err_bar_v3(axs[0], algorithms, data_jct, colors, hatches, ylabel='Avg. JCT (hrs)')
-    rects2 = plot_grouped_err_bar_v3(axs[1], algorithms, data_unfair, colors, hatches, ylabel='Unfair Job Fraction')
-    # rects3 = plot_grouped_err_bar_v3(axs[2], algorithms, data_worst_ftf, colors, hatches, ylabel='Worst FTF')
-    rects3 = plot_grouped_err_bar_v3(axs[2], algorithms, data_makespan, colors, hatches, ylabel='Makespan (hrs)')
+    rects2 = plot_grouped_err_bar_v3(axs[1], algorithms, data_unfair, colors, hatches, ylabel='Unfair Fraction')
+    rects3 = plot_grouped_err_bar_v3(axs[2], algorithms, data_worst_ftf, colors, hatches, ylabel='Worst FTF')
+    # rects3 = plot_grouped_err_bar_v3(axs[3], algorithms, data_makespan, colors, hatches, ylabel='Makespan (hrs)')
 
     # Create a combined legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc='upper center', ncol=len(algorithms), fontsize=22, frameon=False)
+    fig.legend(handles, labels, bbox_to_anchor=(0.5, 1.05),
+               loc='upper center', ncol=4, fontsize=22, frameon=False)
 
-    fig.tight_layout(rect=[0, 0, 1, 0.85])
+    fig.tight_layout(rect=[0, 0, 1, 0.8])
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_testbed")
     plt.savefig(save_path + ".jpg")
     plt.savefig(save_path + ".pdf")
@@ -813,9 +826,10 @@ if __name__ == '__main__':
 
     # workload_sets = ["workloads-0.5", "workloads-1.0", "workloads-1.5", "workloads-2.0", "workloads-realistic"]
     # fig2_sim_all_jct_and_ftf_v2()
-    fig2_sim_all_jct_and_ftf_v3()
+    # fig2_sim_all_jct_and_ftf_v3()
 
-    # fig1_physical_jct_ftf_with_err_bar_v3()
+    # fig1_physical_jct_ftf_with_err_bar()
+    fig1_physical_jct_ftf_with_err_bar_v3()
 
     # fig3_ftf_cdf()
 
