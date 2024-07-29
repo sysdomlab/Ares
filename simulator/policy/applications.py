@@ -260,15 +260,15 @@ performance_profiling = "2080ti"  # "2080ti"  # g4dn12xlarge
 TRACES_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), f"traces/{performance_profiling}")
 APPLICATIONS = {
     "bert": Application(os.path.join(TRACES_DIR, "bert"), max_epochs=2,
-                        slowdown_factor=1.7662, rescale_time=120),
+                        slowdown_factor=1.8261, rescale_time=120),
     "cifar10": Application(os.path.join(TRACES_DIR, "cifar10"), max_epochs=100,
-                           slowdown_factor=1.6797, rescale_time=50),
+                           slowdown_factor=1.4258, rescale_time=50),
     "ncf": Application(os.path.join(TRACES_DIR, "ncf"), max_epochs=10,
-                       slowdown_factor=3.6068, rescale_time=15),
+                       slowdown_factor=3.6501, rescale_time=15),
     "imagenet": Application(os.path.join(TRACES_DIR, "imagenet"), max_epochs=90, max_local_bsz=75,
-                            slowdown_factor=0.9703, rescale_time=250),
+                            slowdown_factor=0.9630, rescale_time=250),
     "deepspeech2": Application(os.path.join(TRACES_DIR, "deepspeech2"), max_epochs=80,
-                               slowdown_factor=0.7407, rescale_time=25),
+                               slowdown_factor=0.7234, rescale_time=25),
     "yolov3": Application(os.path.join(TRACES_DIR, "yolov3"), max_epochs=50, max_local_bsz=12,
-                          slowdown_factor=1.1143, rescale_time=80),
+                          slowdown_factor=1.0766, rescale_time=80),
 }
