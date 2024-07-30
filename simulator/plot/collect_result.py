@@ -2,7 +2,7 @@ import collections
 import os
 import subprocess
 import re
-
+import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -121,6 +121,8 @@ def get_data_from_raw_log(wl_set, metric, trans=True):
             res = get_makespan(file)
         elif metric == "overhead":
             res = get_overhead(file)
+        elif metric == "restarts":
+            res = get_restarts(file)
         else:
             raise ValueError(f"Invalid metric: {metric}")
 
@@ -250,6 +252,16 @@ def get_overhead(log_file):
             if "overhead" in line:
                 res = float(line.split(":")[-1].strip())
     return res
+
+
+def get_restarts(log_file):
+    log_file = log_file.replace("txt", "json")
+    with open(log_file, 'r') as f:
+        data = json.load(f)
+        jobs = data[-1]["submitted_jobs"]
+        avg_restarts = sum([job["num_restarts"] for job in jobs]) / len(jobs)
+        print(avg_restarts, len(jobs))
+    return avg_restarts
 
 
 def plot_cdf(data, wl_set):

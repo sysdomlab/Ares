@@ -152,17 +152,17 @@ def fig2():
     plt.show()
 
 
-def get_metric(exp, metric="cer"):
+def get_metric(exp, metric="cer", t="endo_elasticity"):
     all_epochs = []
     all_cers = []
 
-    for seed in ["-seed0", "-seed1234", "-seed6666"]:
+    for seed in ["-seed0", "-seed1234", "-seed6666"] if t == "endo_elasticity" else ["-seed0"] * 3:
         try:
-            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{seed}/restart_0_rank_0.log"
+            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{t}/{exp}{seed}/restart_0_rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
         except FileNotFoundError:
-            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{exp}{seed}/rank_0.log"
+            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{t}/{exp}{seed}/rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
 
@@ -183,24 +183,19 @@ def get_metric(exp, metric="cer"):
     return all_epochs, all_cers
 
 
-def plot_with_range(ax, epochs, metrics, label):
+def plot_with_range(ax, epochs, metrics, label, t="endo_elasticity"):
     min_metrics = np.min(metrics, axis=0)
     max_metrics = np.max(metrics, axis=0)
     mean_metrics = np.mean(metrics, axis=0)
 
-    ax.plot(epochs[0], mean_metrics, marker='o', label=label)
-    ax.fill_between(epochs[0], min_metrics, max_metrics, alpha=0.3)
+    ax.plot(epochs[0], mean_metrics,
+            marker='o' if t == "endo_elasticity" else 'v',
+            label=label)
+    if t == "endo_elasticity":
+        ax.fill_between(epochs[0], min_metrics, max_metrics, alpha=0.3)
 
 
 def fig3():
-    app = {
-        # "deepspeech2-1": "32-GPU",
-        "deepspeech2-2": "16-GPU",
-        "deepspeech2-3": "8-GPU",
-        "deepspeech2-4": "4-GPU",
-        "deepspeech2-5": "2-GPU",
-    }
-
     fontsize = 35
     legend_fontsize = 26
     linewidth = 2
@@ -209,11 +204,32 @@ def fig3():
     plt.style.use('ggplot')
     fig, ax = plt.subplots(figsize=(8, 7))
 
+    app = {
+        # "deepspeech2-1": "32-GPU",
+        "deepspeech2-2": "16-GPU",
+        "deepspeech2-3": "8-GPU",
+        "deepspeech2-4": "4-GPU",
+        "deepspeech2-5": "2-GPU",
+        "deepspeech2-6": "1-GPU",
+    }
     for exp, label in app.items():
         epochs, metrics = get_metric(exp)
         print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
               f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
         plot_with_range(ax, epochs, metrics, label)
+
+    # app = {
+    #     # "deepspeech2-1": "32-GPU",
+    #     "deepspeech2-2": "16-GPU",
+    #     "deepspeech2-3": "8-GPU",
+    #     "deepspeech2-4": "4-GPU",
+    #     "deepspeech2-5": "2-GPU",
+    # }
+    # for exp, label in app.items():
+    #     epochs, metrics = get_metric(exp, t="exo_elasticity")
+    #     print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
+    #           f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
+    #     plot_with_range(ax, epochs, metrics, label, t="exo_elasticity")
 
     ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
     ax.set_ylabel('Character Error Rate', fontsize=fontsize, color='black')
@@ -225,22 +241,34 @@ def fig3():
     plt.show()
     plt.clf()
 
+    plt.style.use('ggplot')
+    fig, ax = plt.subplots(figsize=(8, 7))
+
     app = {
         # "imagenet-4": "32-GPU",
         "imagenet-3": "16-GPU",
         "imagenet-2": "8-GPU",
         "imagenet-1": "4-GPU",
         "imagenet-5": "2-GPU",
+        "imagenet-6": "1-GPU",
     }
-
-    plt.style.use('ggplot')
-    fig, ax = plt.subplots(figsize=(8, 7))
-
     for exp, label in app.items():
         epochs, metrics = get_metric(exp, "accuracy5")
         print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
               f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
         plot_with_range(ax, epochs, metrics, label)
+
+    # app = {
+    #     # "imagenet-4": "32-GPU",
+    #     "imagenet-3": "16-GPU",
+    #     "imagenet-2": "8-GPU",
+    #     "imagenet-1": "4-GPU",
+    # }
+    # for exp, label in app.items():
+    #     epochs, metrics = get_metric(exp, "accuracy5", t="exo_elasticity")
+    #     print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
+    #           f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
+    #     plot_with_range(ax, epochs, metrics, label, t="exo_elasticity")
 
     ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
     ax.set_ylabel('Top-5 Accuracy', fontsize=fontsize, color='black')
