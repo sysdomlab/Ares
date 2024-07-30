@@ -1,0 +1,5 @@
+name,time,application,num_replicas,batch_size
+deepspeech2-5,5,deepspeech2,2,80
+deepspeech2-2,6,deepspeech2,16,640
+deepspeech2-3,7,deepspeech2,8,320
+deepspeech2-4,8,deepspeech2,4,160
