@@ -24,10 +24,10 @@ workloads = [
     for j in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
 ]
 policies = [
-    'pollux',
+    # 'pollux',
     # 'optimus',
     # 'tiresias',
-    # 'ares',
+    'ares',
 ]
 exp_name = "Simulation-scale"
 
@@ -65,7 +65,6 @@ def execute_command(command):
 
 if __name__ == '__main__':
     # nohup python3 start_for_scale_simulation.py > start_for_scale_simulation.log 2>&1 &
-    pool_size = os.cpu_count()
-    pool_size = 60
+    pool_size = os.cpu_count() // 4 * 3
     with Pool(pool_size) as pool:
         list(tqdm(pool.imap_unordered(execute_command, commands), total=len(commands)))

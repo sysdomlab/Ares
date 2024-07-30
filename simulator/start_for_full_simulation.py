@@ -3,6 +3,8 @@ import subprocess
 from multiprocessing import Pool
 from tqdm import tqdm
 
+from policy.utils_gavel import get_gavel_policies
+
 workloads = [
     f"{name}/workload-{j}.csv"
     for name in [
@@ -15,17 +17,21 @@ workloads = [
         "philly",
         "saturn",
         # "workloads-4h-40j",
-        # "workloads-4h-80j",
     ]
     for j in [1, 2, 3, 4, 5, 6, 7, 8]
 ]
 policies = [
+    # 'srjf',
+    # 'fifo',
+    # "max_sum_throughput_perf",
+
     'pollux',
     'optimus',
     'tiresias',
-    # 'sjf',
-    # 'fifo',
     'ares',
+    "finish_time_fairness_perf",
+    "max_min_fairness",
+    "allox"
 ]
 exp_name = "Simulation-16nodes"
 
@@ -45,6 +51,7 @@ for policy in policies:
         command = (f'{python3} simulator.py'
                    f' --workload {workload_path} --policy {policy} --output {json_file}'
                    f' --nodes "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"'
+                   f' --interval {360 if policy in get_gavel_policies() else 60}'
                    f' 2>&1 > {log_file}')
         commands.append(command)
 

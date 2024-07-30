@@ -2,6 +2,8 @@ import os
 from multiprocessing import Pool
 from tqdm import tqdm
 
+from policy.utils_gavel import get_gavel_policies
+
 workloads = [
     f"{name}/workload-{j}.csv"
     for name in [
@@ -10,12 +12,15 @@ workloads = [
     for j in [6]
 ]
 policies = [
-    'pollux',
     'optimus',
+    'pollux',
     'tiresias',
     'ares',
+    "finish_time_fairness_perf",
+    "max_min_fairness",
+    "allox"
 ]
-exp_name = "SimulatorFidelity"
+exp_name = "Simulator-Fidelity"
 
 python3 = "/home/cchen/miniconda3/envs/yfliu/bin/python3"
 
@@ -31,7 +36,9 @@ for policy in policies:
         log_file = f'{log_dir}/{policy}.txt'
         json_file = f'{log_dir}/{policy}.json'
         command = (f'{python3} simulator.py'
-                   f' --workload {workload_path} --policy {policy} --output {json_file} --nodes "0 1 2 3"'
+                   f' --workload {workload_path} --policy {policy} --output {json_file} '
+                   f'--nodes "0 1 2 3"'
+                   f' --interval {360 if policy in get_gavel_policies() else 60}'
                    f' 2>&1 > {log_file}')
         commands.append(command)
 

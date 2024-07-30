@@ -16,6 +16,7 @@ nohup $python3 -u scheduler.py \
   --policy "$policy" \
   --nodes "$nodes" \
   --output "$json_file" \
+  --interval 60 \
   --namespace "$namespace" > "$log_path" 2>&1 &
 
 nodes="10.0.0.17 10.0.0.20 10.0.0.21 10.0.0.22"
@@ -27,6 +28,7 @@ nohup $python3 -u scheduler.py \
   --policy "$policy" \
   --nodes "$nodes" \
   --output "$json_file" \
+  --interval 60 \
   --namespace "$namespace" > "$log_path" 2>&1 &
 
 nodes="10.0.0.11 10.0.0.13 10.0.0.15 10.0.0.16"
@@ -38,4 +40,5 @@ nohup $python3 -u scheduler.py \
   --policy "$policy" \
   --nodes "$nodes" \
   --output "$json_file" \
+  --interval 60 \
   --namespace "$namespace" > "$log_path" 2>&1 &
