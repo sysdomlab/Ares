@@ -3,3 +3,7 @@ deepspeech2-5,5,deepspeech2,2,80
 deepspeech2-2,6,deepspeech2,16,640
 deepspeech2-3,7,deepspeech2,8,320
 deepspeech2-4,8,deepspeech2,4,160
+imagenet-5,5,imagenet,2,800
+imagenet-3,7,imagenet,16,6400
+imagenet-3,7,imagenet,8,3200
+imagenet-4,8,imagenet,4,1600

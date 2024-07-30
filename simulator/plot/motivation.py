@@ -197,7 +197,7 @@ def plot_with_range(ax, epochs, metrics, label, t="endo_elasticity"):
 
 def fig3():
     fontsize = 35
-    legend_fontsize = 26
+    legend_fontsize = 19
     linewidth = 2
     markersize = 10
 
@@ -263,6 +263,7 @@ def fig3():
     #     "imagenet-3": "16-GPU",
     #     "imagenet-2": "8-GPU",
     #     "imagenet-1": "4-GPU",
+    #     "imagenet-5": "2-GPU",
     # }
     # for exp, label in app.items():
     #     epochs, metrics = get_metric(exp, "accuracy5", t="exo_elasticity")

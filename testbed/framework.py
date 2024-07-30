@@ -197,7 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--acc_bsz', type=int, default=80)
     parser.add_argument('--acc_step', type=int, default=1)
 
-    parser.add_argument('--backend', type=str, default="gloo")
+    parser.add_argument('--backend', type=str, default="nccl")
 
     parser.add_argument('--model_name', type=str, default='deepspeech2')
     parser.add_argument('--max_epoch', type=int, default=20)
