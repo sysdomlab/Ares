@@ -31,6 +31,8 @@ class ARESPolicy(object):
         self.allocations = {}
         self.threshold = threshold
 
+        # self.linear_gps_sys = LinearGPSSystem(total_gpus)
+
     def optimize(self,
                  jobs: Dict[Tuple[str, str], JobInfo],
                  nodes: Dict[str, NodeInfo],
@@ -43,6 +45,7 @@ class ARESPolicy(object):
 
         # 1. 检查是否有新到达或者结束的任务，如果没有则直接返回
         has_new_job = self.gps_sys.check_and_add_new_job(jobs)
+        self.gps_sys.check_and_add_new_job(jobs)
         has_finished_job = (collections.Counter(sum(self.allocations.values(), []))
                             != collections.Counter(sum(prev_allocations.values(), [])))
 
@@ -52,6 +55,9 @@ class ARESPolicy(object):
         if not has_new_job and not has_finished_job:
             # print(f">>> no new job or finished job, return prev_allocations: {prev_allocations}")
             return prev_allocations, len(nodes)  # todo 如果吞吐量、完成时间变化，也需要调度
+
+        # assert self.gps_sys.finished_job_order == self.linear_gps_sys.finished_job_order, \
+        #     f"finished_job_order not equal: {self.gps_sys.finished_job_order}, {self.linear_gps_sys.finished_job_order}"
 
         # 3. 按所有任务的完成时间升序再分配资源，但要根据非线性伸缩系数进行控制
         num_gpus = sum(node.resources["nvidia.com/gpu"] for node in nodes.values())
@@ -246,4 +252,45 @@ class GPSSystem:
         if has_new_job:
             # 计算理想公平分配下的完成时间, 按照完成时间排序
             self._sim_forward()
+        return has_new_job
+
+
+class LinearGPSSystem:
+    def __init__(self, total_gpus):
+        self.fair_jobs: dict = {}
+        self.virtual_time = 0
+        self.finished_job_order = []
+        self.total_gpus = total_gpus
+        
+    def _step(self):
+        active_jobs = {k: j for k, j in self.fair_jobs.items() if j > self.virtual_time}
+        active_jobs_num = len(active_jobs)
+        fair_share = self.total_gpus * 1 / active_jobs_num if active_jobs_num > 0 else 0
+        self.virtual_time += fair_share
+
+    def _add_job(self, key, job: JobInfo):
+        completion_progress = job.application.get_progress(job.application.max_epochs)
+        scale = job.target_batch_size / job.application.init_batch_size
+        completion_iter = completion_progress / scale
+        # print(f"{key}'s completion_iter: {completion_iter}")
+
+        step_time = predict_step_time(job, 1)
+        gpu_minute = step_time * completion_iter / 60
+
+        self.fair_jobs[key] = self.virtual_time + gpu_minute
+
+    def check_and_add_new_job(self, jobs):
+        # 检查并新增任务
+        has_new_job = False
+        for key, job in jobs.items():
+            if key not in self.fair_jobs.keys():
+                has_new_job = True
+                self._add_job(key, job)
+        if has_new_job:
+            # self.finished_job_order = sorted(self.fair_jobs.items(), key=lambda x: self.fair_jobs[x[0]])
+            self.finished_job_order = sorted(self.fair_jobs.keys(), key=lambda x: self.fair_jobs[x])
+        self._step()
+        # print(f">>> [LinearGPSSystem] finished_job_order: {self.finished_job_order}")
+        # print(f">>> [LinearGPSSystem] virtual time: {self.virtual_time}")
+        # input()
         return has_new_job

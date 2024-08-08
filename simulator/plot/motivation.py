@@ -183,58 +183,69 @@ def get_metric(exp, metric="cer", t="endo_elasticity"):
     return all_epochs, all_cers
 
 
-def plot_with_range(ax, epochs, metrics, label, t="endo_elasticity"):
+def plot_with_range(ax, epochs, metrics, label, t="endo_elasticity", color=None, marker='o'):
     min_metrics = np.min(metrics, axis=0)
     max_metrics = np.max(metrics, axis=0)
     mean_metrics = np.mean(metrics, axis=0)
 
-    ax.plot(epochs[0], mean_metrics,
-            marker='o' if t == "endo_elasticity" else 'v',
-            label=label)
-    if t == "endo_elasticity":
-        ax.fill_between(epochs[0], min_metrics, max_metrics, alpha=0.3)
+    ax.plot(epochs[0], mean_metrics, marker=marker, label=label, color=color)
+    ax.fill_between(epochs[0], min_metrics, max_metrics, alpha=0.3, color=color)
 
 
 def fig3():
     fontsize = 35
-    legend_fontsize = 19
+    legend_fontsize = 22
     linewidth = 2
     markersize = 10
+
+    colors = {
+        "16-GPU": '#e24a33',
+        "8-GPU": '#348abd',
+        "4-GPU": '#988ed5',
+        "2-GPU": '#777777',
+    }
+    markers = {'endo_elasticity': 'o', 'exo_elasticity': 'v'}
+    custom_lines = [
+        plt.Line2D([0], [0], color=colors["16-GPU"]),
+        plt.Line2D([0], [0], color=colors["8-GPU"]),
+        plt.Line2D([0], [0], color=colors["4-GPU"]),
+        plt.Line2D([0], [0], color=colors["2-GPU"]),
+        plt.Line2D([0], [0], color='black', marker='o'),
+        plt.Line2D([0], [0], color='black', marker='v'),
+    ]
 
     plt.style.use('ggplot')
     fig, ax = plt.subplots(figsize=(8, 7))
 
     app = {
-        # "deepspeech2-1": "32-GPU",
-        "deepspeech2-2": "16-GPU",
-        "deepspeech2-3": "8-GPU",
-        "deepspeech2-4": "4-GPU",
         "deepspeech2-5": "2-GPU",
-        "deepspeech2-6": "1-GPU",
+        "deepspeech2-4": "4-GPU",
+        "deepspeech2-3": "8-GPU",
+        "deepspeech2-2": "16-GPU",
     }
-    for exp, label in app.items():
+
+    for i, (exp, label) in enumerate(app.items()):
+        if label == "16-GPU":
+            continue
+        epochs, metrics = get_metric(exp, t="exo_elasticity")
+        print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
+              f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
+        plot_with_range(ax, epochs, metrics, label, t="exo_elasticity", color=colors[label],
+                        marker=markers['exo_elasticity'])
+
+    for i, (exp, label) in enumerate(app.items()):
         epochs, metrics = get_metric(exp)
         print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
               f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
-        plot_with_range(ax, epochs, metrics, label)
-
-    # app = {
-    #     # "deepspeech2-1": "32-GPU",
-    #     "deepspeech2-2": "16-GPU",
-    #     "deepspeech2-3": "8-GPU",
-    #     "deepspeech2-4": "4-GPU",
-    #     "deepspeech2-5": "2-GPU",
-    # }
-    # for exp, label in app.items():
-    #     epochs, metrics = get_metric(exp, t="exo_elasticity")
-    #     print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
-    #           f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
-    #     plot_with_range(ax, epochs, metrics, label, t="exo_elasticity")
+        plot_with_range(ax, epochs, metrics, label, color=colors[label], marker=markers['endo_elasticity'])
 
     ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
     ax.set_ylabel('Character Error Rate', fontsize=fontsize, color='black')
     ax.tick_params(axis='both', which='major', labelsize=fontsize, colors='black')
-    ax.legend(fontsize=legend_fontsize)
+
+    ax.legend(custom_lines, ['16-GPU', '8-GPU', '4-GPU', '2-GPU', 'endo-elasticity', 'exo-elasticity'],
+              fontsize=legend_fontsize)
+
     plt.tight_layout()
     plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity1.pdf"))
     plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity1.png"))
@@ -245,36 +256,34 @@ def fig3():
     fig, ax = plt.subplots(figsize=(8, 7))
 
     app = {
-        # "imagenet-4": "32-GPU",
-        "imagenet-3": "16-GPU",
-        "imagenet-2": "8-GPU",
-        "imagenet-1": "4-GPU",
         "imagenet-5": "2-GPU",
-        "imagenet-6": "1-GPU",
+        "imagenet-1": "4-GPU",
+        "imagenet-2": "8-GPU",
+        "imagenet-3": "16-GPU",
     }
-    for exp, label in app.items():
+
+    for i, (exp, label) in enumerate(app.items()):
+        if label == "16-GPU":
+            continue
+        epochs, metrics = get_metric(exp, "accuracy5", t="exo_elasticity")
+        print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
+              f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
+        plot_with_range(ax, epochs, metrics, label, t="exo_elasticity", color=colors[label],
+                        marker=markers['exo_elasticity'])
+
+    for i, (exp, label) in enumerate(app.items()):
         epochs, metrics = get_metric(exp, "accuracy5")
         print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
               f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
-        plot_with_range(ax, epochs, metrics, label)
-
-    # app = {
-    #     # "imagenet-4": "32-GPU",
-    #     "imagenet-3": "16-GPU",
-    #     "imagenet-2": "8-GPU",
-    #     "imagenet-1": "4-GPU",
-    #     "imagenet-5": "2-GPU",
-    # }
-    # for exp, label in app.items():
-    #     epochs, metrics = get_metric(exp, "accuracy5", t="exo_elasticity")
-    #     print(f"{exp} {label}, accuracy5: {[i[-1] for i in metrics]}, avg: {np.average([i[-1] for i in metrics])}, "
-    #           f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
-    #     plot_with_range(ax, epochs, metrics, label, t="exo_elasticity")
+        plot_with_range(ax, epochs, metrics, label, color=colors[label], marker=markers['endo_elasticity'])
 
     ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
     ax.set_ylabel('Top-5 Accuracy', fontsize=fontsize, color='black')
     ax.tick_params(axis='both', which='major', labelsize=fontsize, colors='black')
-    ax.legend(fontsize=legend_fontsize)
+
+    ax.legend(custom_lines, ['16-GPU', '8-GPU', '4-GPU', '2-GPU', 'endo-elasticity', 'exo-elasticity'],
+              fontsize=legend_fontsize)
+
     plt.tight_layout()
     plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity2.pdf"))
     plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"endo_elasticity2.png"))
