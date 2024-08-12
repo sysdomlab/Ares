@@ -1,47 +1,42 @@
-# Artifact for Pollux OSDI 2021
+# Ares: Fair and Efficient Scheduling of Deep Learning Jobs with Elastic Fair Queuing
 
-This branch contains the artifact for the OSDI 2021 paper "Pollux: Co-adaptive
-Cluster Scheduling for Goodput-Optimized Deep Learning", including:
+This repository contains the artifact for the INFOCOM'25 paper "Ares: Fair and Efficient Scheduling of Deep Learning Jobs with Elastic Fair Queuing". We would like to thank the Pollux authors for open-sourcing their implementation!
 
-- The main implementation of Pollux.
-- Testbed experiment scripts (Sec 5.2).
-- Cluster simulator (Sec 5.3).
-
-## Pollux Implementation Files
+## Ares Implementation
 
 Key files and modules:
 
-- **adaptdl/adaptdl:** implementation of the PolluxAgent.
-- **adaptdl/adaptdl/goodput.py:** Goodput function and throughput fitting.
-- **adaptdl/adaptdl/torch/adascale.py:** AdaScale and square-root LR scaling.
-- **adaptdl/adaptdl/torch/data.py:** Dynamic batch size and checkpoint-restart.
-- **adaptdl/adaptdl/torch/parallel.py:** Throughput and statistical efficiency
-  profiling during forward-backward passes.
-- **sched/adaptdl_sched:** implementation of the PolluxSched.
-- **sched/adaptdl_sched/policy/pollux.py:** PolluxSched cluster optimization.
-- **simulator/** contains the implementation of the cluster simulator.
+- testbed/framework.py: Implementation of the distributed elastic training framework.
+- testbed/scheduler.py: Implementation of the physical cluster scheduler.
+- testbed/worker.py: Implementation of the physical cluster worker.
+- simulator/simulator.py: Implementation of the cluster simulator.
+- simulator/policy : Scheduling algorithms for Ares and baselines.
+- simulator/traces: Throughput data from the physical cluster.
+- simulator/workload: Traces used for job submission replay.
+- simulator/plot: Script for generating the figures in the paper.
 
-## Testbed Experiment Files
+## Reproducing Experiments
 
-**benchmark/** contains the code we used to run our testbed experiments in
-Section 5.2. The key files are:
+### Enviroment
 
-- **benchmark/main.tf** Terraform file that contains the full configurations
-  of the testbed cluster on AWS.
-- **benchmark/models/** contains the implementations of each evaluated model
-  described in Table 1.
-- **benchmark/workloads/workload-6.csv** contains the manually-tuned job trace
-  used to evaluate Pollux, Optimus+Oracle+TunedJobs, and Tiresias+TunedJobs.
-  The GPUs and batch size configurations are ignored by the Pollux scheduler.
-- **benchmark/workloads-realistic/workload-6.csv** contains the job trace used
-  to evaluate Optimus+Oracle and Tiresias (Table 2).
-- **benchmark/run_workload.py** submits jobs according to a workload trace.
-- **benchmark/run_monitor.py** monitors and logs the cluster state during each
-  cluster scheduling experiment.
+We run our testbed experiments in a 16-GPU (4-node) cluster, where each node is equipped with 4 NVIDIA GeForce RTX 2080 Ti GPUs, 2 Intel Xeon Gold 6230 CPUs and 512GB DDR4 RAM. 
 
-## Cluster Simulator
+`pip3 install simulator/requirements.txt`
 
-`simulator/` contains Instructions for reproducing the experiments shown in
-Section 5.3 and Section 5.3.2, and the analysis scripts to plot Figure 8.
+**Please read the code before running the scripts and modify the corresponding file storage paths (it’s recommended to search for all paths with the `/home` prefix).**
 
-Please see `simulator/README.md` for more details.
+### Testbed (Fig. 5)
+
+Run a trace from Philly with 40 jobs in a 4-hour submission window.
+
+1. Run Ares and the six baseline simulations in one go: `cd simulator && python3 start_for_testbed_simulation.py`
+2. Review the script and modify the policy for each scheduler: `cd tesbed && bash clean_workers.sh && bash clean_scheduler.sh && bash start_workers.sh && bash start_scheduler.sh`
+3. Plot Fig. 5：`cd simulator/plot && python3 collect_result_v2.py`
+
+### Simulation (Fig. 6-10)
+
+1. Collect data for Figs. 6-8: `cd simulator && python3 start_for_full_simulation.py`
+2. Collect data for Fig. 9: `cd simulator && python3 start_for_sensitivity_simulation.py`
+3. Collect data for Fig. 10: `cd simulator && python3 start_for_scale_simulation.py`
+4. Plot Figs. 6-10: `cd simulator/plot && python3 collect_result_v2.py`
+
