@@ -82,7 +82,7 @@ class Deepspeech2AresTrainer(AresTrainer):
         train_set = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=self.train_manifest, labels=labels,
                                        normalize=True, speed_volume_perturb=self.speed_volume_perturb,
                                        spec_augment=self.spec_augment,
-                                       samples=4074 if not self.args.profile else None
+                                       samples=4074
                                        )
         # according to the length of voxforge_cmu_us_american_train_manifest_part1.csv
         train_sampler = DistributedSampler(train_set, shuffle=True)
@@ -92,7 +92,7 @@ class Deepspeech2AresTrainer(AresTrainer):
 
         val_set = SpectrogramDataset(audio_conf=audio_conf, manifest_filepath=self.val_manifest, labels=labels,
                                      normalize=True, speed_volume_perturb=False, spec_augment=False,
-                                     samples=452 if not self.args.profile else None
+                                     samples=452
                                      )
         # according to the length of voxforge_cmu_us_american_train_manifest_part2.csv
         val_sampler = DistributedSampler(val_set, shuffle=False, drop_last=True)

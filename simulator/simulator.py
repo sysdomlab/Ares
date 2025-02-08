@@ -29,7 +29,7 @@ from policy.utils_gavel import get_gavel_policies
 
 
 def get_all_policies():
-    return ["tiresias", "optimus", "pollux", "fifo", "srjf", "athena", "ares"] + get_gavel_policies()
+    return ["tiresias", "optimus", "pollux", "fifo", "lucid", "athena", "ares"] + get_gavel_policies()
 
 
 class Job(object):
@@ -182,7 +182,7 @@ class Job(object):
 
 class Cluster(object):
     def __init__(self, workload_name, policy_name, nodes, num_gpus=4, interval=60, out_put=None, namespace=None,
-                 early_exit=None, ares_threshold=0.75):
+                 early_exit=None, ares_threshold=0.75, pollux_p=-1):
         assert 1 <= num_gpus <= 4
         self.workload_name = workload_name
         self.policy_name = policy_name
@@ -206,6 +206,7 @@ class Cluster(object):
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
         self.ares_threshold = ares_threshold
+        self.pollux_p = pollux_p
         self.policy = self.get_policy(policy_name)
         self.out_put = out_put
 
@@ -238,10 +239,10 @@ class Cluster(object):
         elif policy_name == "optimus":
             return OptimusPolicy()
         elif policy_name == "pollux":
-            return PolluxPolicy()
+            return PolluxPolicy(self.pollux_p)
         elif policy_name == "fifo":
             return FIFOPolicy()
-        elif policy_name == "srjf":
+        elif policy_name == "lucid":
             return SRJFPolicy()
         elif policy_name == "athena":
             return AthenaPolicy()
@@ -532,7 +533,7 @@ class Cluster(object):
     def output_logs(self):
         if not os.path.exists(os.path.dirname(self.out_put)):
             os.makedirs(os.path.dirname(self.out_put))
-        with open(self.out_put, "w") as f:
+        with open(self.out_put, "w", encoding="utf-8") as f:
             json.dump(self.logs, f)
 
     def print_logs(self):
@@ -600,8 +601,9 @@ if __name__ == "__main__":
                         help="the prefix of each job_name")
     parser.add_argument('--early_exit', type=int, default=None)
     parser.add_argument('--ares_threshold', type=float, default=0.75)
+    parser.add_argument('--pollux_p', type=float, default=-1)
     args = parser.parse_args()
 
     cluster = Cluster(args.workload, args.policy, args.nodes, args.num_gpus, args.interval, args.output, args.namespace,
-                      args.early_exit, args.ares_threshold)
+                      args.early_exit, args.ares_threshold, args.pollux_p)
     cluster.run()

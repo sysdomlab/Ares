@@ -11,10 +11,142 @@ legend_fontsize = 15
 linewidth = 2
 markersize = 10
 figsize = (7, 4)
-colors = ['#e24933', '#348abd', '#988ed5']
+colors = ['#e24933', '#348abd', '#fbc15e']
 
 
 def fig1():
+    # 创建一个新的图形
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # 1
+    job1 = patches.Rectangle((0, 4), 6, 2, linewidth=0, edgecolor='black', facecolor=colors[0])
+    ax.add_patch(job1)
+
+    # 2
+    job2 = patches.Rectangle((0, 0), 6, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job2)
+    job2 = patches.Rectangle((6, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job2)
+
+    # 3
+    job3 = patches.Rectangle((0, 2), 6, 2, linewidth=0, edgecolor='black', facecolor=colors[2])
+    ax.add_patch(job3)
+
+    # 设置图的范围和标签
+    plt.xlim(0, 8.5)
+    plt.ylim(0, 6)
+    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
+    plt.ylabel('GPU #', fontsize=fontsize, color='black')
+    plt.xticks(range(9), fontsize=fontsize, color='black')
+    plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
+
+    # 在横轴上添加箭头
+    ax.annotate('', xy=(8.5, 0), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="->", color='black', lw=4))
+    ax.annotate('', xy=(0, 6), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="-", color='black', lw=4))
+
+    # 去掉画布的边框
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.tick_params(left=False, bottom=False)  # 隐藏刻度
+
+    # 添加文字
+    ax.text(3, 5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+    ax.text(3, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+    ax.text(4, 1, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+
+    # 添加图例
+    # legend_patches = [Patch(color=color, label=label)
+    #                   for color, label in zip(colors, [f"Job-{i}" for i in range(1, 4)])]
+    # fig.legend(handles=legend_patches,
+    #            loc='upper center',
+    #            bbox_to_anchor=(0.5, 1.025),
+    #            ncol=3,
+    #            fontsize=legend_fontsize,
+    #            frameon=False)
+    # plt.tight_layout(rect=[0, 0, 1, 0.9])  # 调整布局以防止标签被裁剪
+    plt.tight_layout()  # 调整布局以防止标签被裁剪
+
+    # 显示图形
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation1.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation1.png"))
+    plt.show()
+
+    print(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation1.png"))
+
+
+def fig2():
+    # 创建一个新的图形
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # 添加Job-1的矩形
+    job1 = patches.Rectangle((0, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[0])
+    ax.add_patch(job1)
+
+    # 添加Job-2的矩形
+    job2 = patches.Rectangle((2, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[2])
+    ax.add_patch(job2)
+
+    # 添加Job-2的矩形
+    job2 = patches.Rectangle((4, 0), 4, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job2)
+
+    # 设置图的范围和标签
+    plt.xlim(0, 8.5)
+    plt.ylim(0, 6)
+    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
+    plt.ylabel('GPU #', fontsize=fontsize, color='black')
+    plt.xticks(range(9), fontsize=fontsize, color='black')
+    plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
+
+    # 在横轴上添加箭头
+    ax.annotate('', xy=(8.5, 0), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="->", color='black', lw=4))
+    ax.annotate('', xy=(0, 6), xytext=(0, 0),
+                arrowprops=dict(arrowstyle="-", color='black', lw=4))
+
+    # 去掉画布的边框
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.tick_params(left=False, bottom=False)  # 隐藏刻度
+
+    # 添加文字
+    ax.text(1, 3, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+    ax.text(3, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+    ax.text(6, 3, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+            color='white')
+
+    # 添加图例
+    # legend_patches = [Patch(color=color, label=label)
+    #                   for color, label in zip(colors, [f"Job-{i}" for i in range(1, 4)])]
+    # fig.legend(handles=legend_patches,
+    #            loc='upper center',
+    #            bbox_to_anchor=(0.5, 1.025),
+    #            ncol=3,
+    #            fontsize=legend_fontsize,
+    #            frameon=False)
+    # plt.tight_layout(rect=[0, 0, 1, 0.9])  # 调整布局以防止标签被裁剪
+    plt.tight_layout()  # 调整布局以防止标签被裁剪
+
+    # 显示图形
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation2.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation2.png"))
+    plt.show()
+
+    print(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation2.png"))
+
+
+def fig1_():
     # 创建一个新的图形
     fig, ax = plt.subplots(figsize=figsize)
 
@@ -84,25 +216,33 @@ def fig1():
     plt.tight_layout()  # 调整布局以防止标签被裁剪
 
     # 显示图形
-    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation1.pdf"))
-    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation1.png"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation3.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation3.png"))
     plt.show()
 
+    print(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation3.png"))
 
-def fig2():
+
+def fig2_():
     # 创建一个新的图形
     fig, ax = plt.subplots(figsize=figsize)
 
     # 添加Job-1的矩形
-    job1 = patches.Rectangle((0, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job1 = patches.Rectangle((0, 2), 3, 4, linewidth=0, edgecolor='black', facecolor=colors[0])
     ax.add_patch(job1)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((2, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job2 = patches.Rectangle((2, 0), 1, 2, linewidth=0, edgecolor='black', facecolor=colors[2])
+    ax.add_patch(job2)
+    job2 = patches.Rectangle((3, 0), 2.5, 4, linewidth=0, edgecolor='black', facecolor=colors[2])
     ax.add_patch(job2)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((4, 0), 4, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((0, 0), 2, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job2)
+    job2 = patches.Rectangle((3, 4), 5, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
+    ax.add_patch(job2)
+    job2 = patches.Rectangle((5.5, 0), 2.5, 4, linewidth=0, edgecolor='black', facecolor=colors[1])
     ax.add_patch(job2)
 
     # 设置图的范围和标签
@@ -127,11 +267,11 @@ def fig2():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(1, 3, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(1.5, 4, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(3, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(4, 2, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(6, 3, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(6.75, 3, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
 
     # 添加图例
@@ -147,9 +287,11 @@ def fig2():
     plt.tight_layout()  # 调整布局以防止标签被裁剪
 
     # 显示图形
-    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation2.pdf"))
-    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation2.png"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation4.pdf"))
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation4.png"))
     plt.show()
+
+    print(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"motivation4.png"))
 
 
 def get_metric(exp, metric="cer", t="endo_elasticity"):
@@ -295,5 +437,7 @@ if __name__ == '__main__':
     # 调度示意图
     fig1()
     fig2()
+    fig1_()
+    fig2_()
     # 内生弹性精度
-    fig3()
+    # fig3()

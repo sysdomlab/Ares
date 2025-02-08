@@ -13,6 +13,7 @@ from matplotlib.patches import Patch
 
 
 algo_name = {
+    "lucid": "Lucid",
     "ares": "Ares",
     "optimus": "Optimus",
     "pollux": "Pollux",
@@ -24,6 +25,7 @@ algo_name = {
     "max_sum_throughput_perf": "MSS",
     "allox": "AlloX",
 
+    "Lucid": "lucid",
     "Ares": "ares",
     "Optimus": "optimus",
     "Pollux": "pollux",
@@ -44,13 +46,16 @@ trace_name = {
 
 priority = {
     "ares": 1,
+
     "max_min_fairness": 2,
     "finish_time_fairness_perf": 3,
     "allox": 4,
+
     "tiresias": 5,
     "optimus": 6,
     "pollux": 7,
     "srjf": 8,
+    "lucid": 8,
     # "fifo": 9,
     "max_sum_throughput_perf": 10,
 }
@@ -59,6 +64,7 @@ priority = {
 def get_all_txt_files_in_directory(directory, exclude_substr: list = None):
     file_paths = []
     for root, dirs, files in os.walk(directory):
+        print(root, dirs, files)
         for file in files:
             file_paths.append(os.path.join(root, file))
     # exclude = ["fifo", "max_min_fairness", "finish_time_fairness_perf", "max_sum_throughput_perf", "optimus"]
@@ -105,13 +111,17 @@ def get_makespan(log_file):
     return res
 
 
-def get_data_from_raw_log(wl_set, metric, trans=True):
+def get_data_from_raw_log(wl_set, metric, trans=True, exclude=[]):
     results_data = []
+    print(wl_set)
     for file in sorted(get_all_txt_files_in_directory(wl_set)):
         # 从文件名中提取工作负载和算法
         workload = file.split("/")[-2].split("-")[-1]
         algo = os.path.splitext(file.split("/")[-1])[0]
-        # print(f"Workload: {workload}, Algorithm: {algo}")
+        print(f"Workload: {workload}, Algorithm: {algo}")
+
+        if algo in exclude:
+            continue
 
         if metric == "avg_jct":
             res = get_avg_jct(file)
@@ -257,10 +267,14 @@ def get_overhead(log_file):
 def get_restarts(log_file):
     log_file = log_file.replace("txt", "json")
     with open(log_file, 'r') as f:
-        data = json.load(f)
+        try:
+            data = json.load(f)
+        except Exception as e:
+            print(f"Error: {log_file}")
+            return
         jobs = data[-1]["submitted_jobs"]
         avg_restarts = sum([job["num_restarts"] for job in jobs]) / len(jobs)
-        print(avg_restarts, len(jobs))
+        # print(avg_restarts, len(jobs))
     return avg_restarts
 
 

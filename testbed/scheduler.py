@@ -29,7 +29,7 @@ from policy.utils_gavel import get_gavel_policies
 
 
 def get_all_policies():
-    return ["tiresias", "optimus", "pollux", "fifo", "srjf", "athena", "ares"] + get_gavel_policies()
+    return ["tiresias", "optimus", "pollux", "fifo", "srjf", "athena", "ares", "lucid"] + get_gavel_policies()
 
 
 class Job(object):
@@ -173,6 +173,7 @@ class Cluster(object):
                 target_batch_size=row.batch_size,
                 # target_batch_size=None if policy_name in [] else row.batch_size,
             )
+            print(f"Job {job_name} submitted at {row.time} with {row.num_replicas} replicas and {row.batch_size} batch size")
         self.ares_threshold = ares_threshold
         self.policy = self.get_policy(policy_name)
         self.out_put = out_put
@@ -209,7 +210,7 @@ class Cluster(object):
             return PolluxPolicy()
         elif policy_name == "fifo":
             return FIFOPolicy()
-        elif policy_name == "srjf":
+        elif policy_name == "lucid":
             return SRJFPolicy()
         elif policy_name == "athena":
             return AthenaPolicy()
@@ -231,7 +232,7 @@ class Cluster(object):
                 elif isinstance(self.policy, FIFOPolicy):
                     job_infos[job.name] = self.get_tiresias_job_info(job)
                 elif isinstance(self.policy, SRJFPolicy):
-                    job_infos[job.name] = self.get_optimus_job_info(job)
+                    job_infos[job.name] = self.get_tiresias_job_info(job)
                 elif isinstance(self.policy, AthenaPolicy):
                     job_infos[job.name] = self.get_optimus_job_info(job)
                 elif isinstance(self.policy, ARESPolicy):
@@ -289,7 +290,7 @@ class Cluster(object):
         return job_info
 
     def get_tiresias_job_info(self, job):
-        return JobInfo(
+        job_info = JobInfo(
             resources={"nvidia.com/gpu": 1},
             speedup_fn=None,
             creation_timestamp=job.submission_time,
@@ -297,6 +298,10 @@ class Cluster(object):
             min_replicas=0,
             max_replicas=job.target_num_replicas,
         )
+        job_info.application = job.application
+        job_info.target_batch_size = job.target_batch_size
+        job_info.epoch = job.epoch
+        return job_info
 
     def get_gavel_job_info(self, job: Job):
         job_info = JobInfo(
@@ -548,10 +553,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--workload", type=str, default="./workload/workloads-4h-40j/workload-3.csv",
                         help="path to workload csv")
-    parser.add_argument("--policy", type=str, default="ares", choices=get_all_policies(),
+    parser.add_argument("--policy", type=str, default="lucid", choices=get_all_policies(),
                         help="scheduler policy")
     parser.add_argument("--nodes", type=str,
-                        default=" ".join(["10.0.0.22", "10.0.0.23", "10.0.0.24", "10.0.0.26"]))
+                        default="10.0.0.17 10.0.0.19 10.0.0.20 10.0.0.22")
     parser.add_argument("--interval", type=int, default=60,
                         help="scheduling interval in seconds")
     parser.add_argument("--num-gpus", type=int, default=4,

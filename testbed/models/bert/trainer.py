@@ -1,4 +1,5 @@
 import os
+import time
 
 import torch
 import torch.distributed as dist
@@ -88,6 +89,7 @@ class BertAresTrainer(AresTrainer):
 
         # Data
         print('==> Preparing data..')
+        t1 = time.time()
         train_set, _, _ = load_cache(self, evaluate=False)
         train_sampler = DistributedSampler(train_set, shuffle=True)
         train_sampler.set_epoch(self.start_epoch)
@@ -99,6 +101,7 @@ class BertAresTrainer(AresTrainer):
         val_sampler.set_epoch(self.start_epoch)
         val_loader = DataLoader(val_set, self.args.acc_bsz, shuffle=False, num_workers=20, sampler=val_sampler,
                                 pin_memory=True)
+        print(f"==> Data prepared in {time.time() - t1:.2f} s")
 
         self.train_loader = train_loader
         self.val_loader = val_loader

@@ -33,22 +33,27 @@ class SRJFPolicy(object):
             #     job.remaining = (job.application.get_iteration(job.target_batch_size, completion_epoch) -
             #                      job.application.get_iteration(job.target_batch_size, job.epoch))
             job.remaining_time = self.predict_step_time(job, job.max_replicas) * job.remaining
-            print(f">>> job: {key[1]}, remaining: {job.remaining}, remaining_time: {job.remaining_time}")
+            print(f">>> job: {key}, remaining: {job.remaining}, remaining_time: {job.remaining_time}")
 
         num_gpus = sum(node.resources["nvidia.com/gpu"] for node in nodes.values())
         print(f">>> num_gpus: {num_gpus}")
-        num_replicas = {}
+        # non-preemptive
+        allocations = {k: v for k, v in prev_allocations.items() if k in jobs}
+        num_replicas = {k: len(v) for k, v in allocations.items()}
+        num_gpus -= sum(num_replicas.values())
         # for key, job in sorted(jobs.items(), key=lambda item: item[1].remaining):
         for key, job in sorted(jobs.items(), key=lambda item: item[1].remaining_time):
             # num_replicas[key] = min(num_gpus, job.max_replicas)
             desire_replicas = job.max_replicas
+            print(f">>> {key} desire_replicas: {desire_replicas}")
             if desire_replicas > num_gpus:
-                break
+                continue
+            if key in num_replicas.keys():
+                continue
             num_replicas[key] = min(num_gpus, desire_replicas)
             num_gpus -= num_replicas[key]
         print(f">>> num_replicas: {num_replicas}")
         # Placements.
-        allocations = {k: v for k, v in prev_allocations.items() if k in jobs}
         allocations = {k: v for k, v in allocations.items() if len(v) == num_replicas.get(k, 0)}
         job_keys = sorted(jobs, key=lambda k: num_replicas.get(k, 0))
         total_gpus = {idx: int(node.resources['nvidia.com/gpu']) for idx, node in nodes.items()}

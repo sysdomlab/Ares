@@ -8,33 +8,19 @@ from policy.utils_gavel import get_gavel_policies
 workloads = [
     f"{name}/workload-{j}.csv"
     for name in [
-        # "workloads-2.0",
-        # "workloads-1.5",
-        # "workloads-realistic",
-        # "workloads-1.0",
-        # "workloads-0.5",
         "newtrace",
         "philly",
         "saturn",
-        # "workloads-4h-40j",
     ]
     for j in [1, 2, 3, 4, 5, 6, 7, 8]
 ]
 policies = [
-    # 'srjf',
-    # 'fifo',
-    # "max_sum_throughput_perf",
-
-    # 'pollux',
-    # 'optimus',
-    # 'tiresias',
-    # 'ares',
-    'lucid',
-    # "finish_time_fairness_perf",
-    # "max_min_fairness",
-    # "allox"
+    'pollux_1',
+    'pollux_-1',
+    'pollux_-10',
+    'ares',
 ]
-exp_name = "Simulation-16nodes"
+exp_name = "pollux_deep_dive"
 
 python3 = "/home/cchen/miniconda3/envs/yfliu/bin/python3"
 
@@ -49,11 +35,18 @@ for policy in policies:
             os.makedirs(log_dir)
         log_file = f'{log_dir}/{policy}.txt'
         json_file = f'{log_dir}/{policy}.json'
-        command = (f'{python3} simulator.py'
-                   f' --workload {workload_path} --policy {policy} --output {json_file}'
-                   f' --nodes "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"'
-                   f' --interval {360 if policy in get_gavel_policies() else 60}'
-                   f' 2>&1 > {log_file}')
+        if policy == 'ares':
+            command = (f'{python3} simulator.py'
+                       f' --workload {workload_path} --policy {policy} --output {json_file}'
+                       f' --nodes "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"'
+                       f' --interval 60'
+                       f' 2>&1 > {log_file}')
+        else:
+            command = (f'{python3} simulator.py'
+                       f' --workload {workload_path} --policy {policy.split("_")[0]} --output {json_file}'
+                       f' --nodes "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15"'
+                       f' --pollux_p {policy.split("_")[1]}'
+                       f' 2>&1 > {log_file}')
         commands.append(command)
 
 print(f'Total commands: {len(commands)}')
@@ -68,7 +61,7 @@ def execute_command(command):
 
 
 if __name__ == '__main__':
-    # nohup python3 start_for_full_simulation.py > start_for_full_simulation.log 2>&1 &
-    pool_size = os.cpu_count() - 1
+    # nohup python3 start_for_pollux.py > start_for_pollux.log 2>&1 &
+    pool_size = os.cpu_count() // 4 * 3
     with Pool(pool_size) as pool:
         list(tqdm(pool.imap_unordered(execute_command, commands), total=len(commands)))

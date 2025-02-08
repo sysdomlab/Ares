@@ -188,8 +188,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--job_name', type=str, default='deepspeech2-11')
-    parser.add_argument('--master_address', type=str, default='10.0.0.24')
+    parser.add_argument('--job_name', type=str, default='bert-11')
+    parser.add_argument('--master_address', type=str, default='10.0.0.26')
     parser.add_argument('--master_port', type=str, default='17001')
     parser.add_argument('--world_size', type=int, default=1)
     parser.add_argument('--global_rank', type=int, default=0)

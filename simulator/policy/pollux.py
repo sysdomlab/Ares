@@ -32,13 +32,15 @@ LOG.setLevel(logging.INFO)
 
 
 class PolluxPolicy(object):
-    def __init__(self):
+    def __init__(self, p=-1):
         self._prev_states = None
         self._prev_jobs = None
         self._prev_nodes = None
         # Utilization thresholds for cluster autoscaling.
         self._min_util = 0.35
         self._max_util = 0.65
+        self.p = p
+        print(f"================ Pollux uses p {p}")
 
     def _allocations_to_state(self, allocations, jobs, nodes):
         jobs_index = {key: idx for idx, key in enumerate(jobs)}
@@ -160,7 +162,7 @@ class PolluxPolicy(object):
             states = np.expand_dims(base_state, 0)
         else:
             states = self._adapt_prev_states(jobs, nodes)
-        problem = Problem(list(jobs.values()), list(nodes.values()), base_state)
+        problem = Problem(list(jobs.values()), list(nodes.values()), base_state, p = self.p)
                           #len(nodes) * [node_template], base_state)
         algorithm = NSGA2(
             pop_size=100,
@@ -201,7 +203,7 @@ class PolluxPolicy(object):
 
 
 class Problem(pymoo.model.problem.Problem):
-    def __init__(self, jobs, nodes, base_state):
+    def __init__(self, jobs, nodes, base_state, p):
         """
         Multi-objective optimization problem used by PolluxPolicy to determine
         resource allocations and desired cluster size. Optimizes for the best
@@ -262,6 +264,8 @@ class Problem(pymoo.model.problem.Problem):
                     node.resources[rtype] // job.resources[rtype]
                     for rtype in rtypes if job.resources.get(rtype, 0) > 0)
         super().__init__(n_var=self._base_state.size, n_obj=2, type_var=np.int64)
+
+        self.p = p
 
     def get_cluster_utilities(self, states):
         """
@@ -326,6 +330,7 @@ class Problem(pymoo.model.problem.Problem):
         restart = np.any(states != self._base_state, axis=2)
         scaled_speedups *= np.where(restart, factor, 1)
         p = -1  # Exponent used in power mean. More negative = more fair.
+        p = self.p
         if p == 0:
             # Geometric mean
             mean = np.exp(np.sum(np.log(np.maximum(scaled_speedups, 1e-3)),

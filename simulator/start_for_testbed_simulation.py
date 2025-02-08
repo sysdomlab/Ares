@@ -18,7 +18,8 @@ policies = [
     'ares',
     "finish_time_fairness_perf",
     "max_min_fairness",
-    "allox"
+    "allox",
+    "lucid",
 ]
 exp_name = "Simulator-Fidelity"
 

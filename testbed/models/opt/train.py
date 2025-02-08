@@ -13,7 +13,7 @@ from datasets import load_metric
 
 # https://beyondguo.github.io/nlp_basis/notes/HuggingfaceNLP-8.%20%E4%BD%BF%E7%94%A8PyTorch%E6%9D%A5%E5%BE%AE%E8%B0%83.html#_1-%E6%95%B0%E6%8D%AE%E9%9B%86%E9%A2%84%E5%A4%84%E7%90%86
 
-raw_datasets = load_dataset("glue", "mrpc")
+raw_datasets = load_dataset("glue", "mrpc")   #
 checkpoint = "/home/cchen/yfliu/ares/data/squad/model/bert-base-uncased"
 tokenizer = AutoTokenizer.from_pretrained(checkpoint)
 
@@ -34,7 +34,7 @@ tokenized_datasets.set_format('torch')
 print(tokenized_datasets['train'].column_names)
 
 train_dataloader = DataLoader(tokenized_datasets['train'], shuffle=True, batch_size=8, collate_fn=data_collator)
-eval_dataloader = DataLoader(tokenized_datasets['validation'], batch_size=8, collate_fn=data_collator)
+eval_dataloader = DataLoader(tokenized_datasets['validation'], batch_size=8, collate_fn=data_collator)   #
 
 # 查看一下train_dataloader的元素长啥样
 for batch in train_dataloader:
@@ -43,7 +43,7 @@ print({k: v.shape for k, v in batch.items()})
 # 可见都是长度为72，size=8的batch
 
 
-model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2)
+model = AutoModelForSequenceClassification.from_pretrained(checkpoint, num_labels=2)   #
 
 print(model(**batch))
 
