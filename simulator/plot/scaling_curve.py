@@ -59,8 +59,8 @@ if __name__ == '__main__':
         "deepspeech2": "DeepSpeech2",
         "yolov3": "YOLOv3",
     }
-    fontsize = 35
-    legend_fontsize = 19
+    fontsize = 21
+    legend_fontsize = 21
     left, right, top, bottom = 0.17, 1, 1, 0.14
     linewidth = 2
     markersize = 10

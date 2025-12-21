@@ -1,5 +1,6 @@
 import os
 import sys
+from models.yolov3.eval.evaluator import Evaluator
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # print(os.path.dirname(os.path.abspath(__file__)))
@@ -96,6 +97,15 @@ class YOLOv3AresTrainer(AresTrainer):
         loss_giou = loss_giou / self.args.acc_step
         loss_conf = loss_conf / self.args.acc_step
         loss_cls = loss_cls / self.args.acc_step
+
+        print('*' * 20 + "Evaluate" + '*' * 20)
+        APs = Evaluator(self.model).APs_voc()
+        mAP = 0
+        for i in APs:
+            print("{} --> mAP : {}".format(i, APs[i]))
+            mAP += APs[i]
+        mAP /= self.train_loader.dataset.num_classes
+        print('mAP:%g' % mAP)
 
         self.val_metric.accumulate_in_batch([loss.item(), loss_giou.item(), loss_conf.item(), loss_cls.item()])
 

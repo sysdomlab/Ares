@@ -6,7 +6,7 @@ import matplotlib.patches as patches
 import numpy as np
 from matplotlib.patches import Patch
 
-fontsize = 28
+fontsize = 21
 legend_fontsize = 15
 linewidth = 2
 markersize = 10
@@ -19,17 +19,17 @@ def fig1():
     fig, ax = plt.subplots(figsize=figsize)
 
     # 1
-    job1 = patches.Rectangle((0, 4), 6, 2, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job1 = patches.Rectangle((0, 4), 6, 2, linewidth=1, edgecolor=colors[0], facecolor=colors[0])
     ax.add_patch(job1)
 
     # 2
-    job2 = patches.Rectangle((0, 0), 6, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((0, 0), 6, 2, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((6, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((6, 0), 2, 6, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job2)
 
     # 3
-    job3 = patches.Rectangle((0, 2), 6, 2, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job3 = patches.Rectangle((0, 2), 6, 2, linewidth=1, edgecolor=colors[2], facecolor=colors[2])
     ax.add_patch(job3)
 
     # 设置图的范围和标签
@@ -86,15 +86,15 @@ def fig2():
     fig, ax = plt.subplots(figsize=figsize)
 
     # 添加Job-1的矩形
-    job1 = patches.Rectangle((0, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job1 = patches.Rectangle((0, 0), 2, 6, linewidth=1, edgecolor=colors[0], facecolor=colors[0])
     ax.add_patch(job1)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((2, 0), 2, 6, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job2 = patches.Rectangle((2, 0), 2, 6, linewidth=1, edgecolor=colors[2], facecolor=colors[2])
     ax.add_patch(job2)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((4, 0), 4, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((4, 0), 4, 6, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job2)
 
     # 设置图的范围和标签
@@ -151,27 +151,27 @@ def fig1_():
     fig, ax = plt.subplots(figsize=figsize)
 
     # 1
-    job1 = patches.Rectangle((0, 3), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job1 = patches.Rectangle((0, 3), 2, 3, linewidth=1, edgecolor=colors[0], facecolor=colors[0])
     ax.add_patch(job1)
-    job1 = patches.Rectangle((0, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job1 = patches.Rectangle((0, 0), 2, 3, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job1)
 
     # 2
-    job2 = patches.Rectangle((2, 4), 3, 2, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job2 = patches.Rectangle((2, 4), 3, 2, linewidth=1, edgecolor=colors[0], facecolor=colors[0])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((2, 2), 3, 2, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job2 = patches.Rectangle((2, 2), 3, 2, linewidth=1, edgecolor=colors[2], facecolor=colors[2])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((2, 0), 3, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((2, 0), 3, 2, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job2)
 
     # 3
-    job1 = patches.Rectangle((5, 3), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job1 = patches.Rectangle((5, 3), 2, 3, linewidth=1, edgecolor=colors[2], facecolor=colors[2])
     ax.add_patch(job1)
-    job1 = patches.Rectangle((5, 0), 2, 3, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job1 = patches.Rectangle((5, 0), 2, 3, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job1)
 
     # 4
-    job1 = patches.Rectangle((7, 0), 1, 6, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job1 = patches.Rectangle((7, 0), 1, 6, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job1)
 
     # 设置图的范围和标签
@@ -228,21 +228,21 @@ def fig2_():
     fig, ax = plt.subplots(figsize=figsize)
 
     # 添加Job-1的矩形
-    job1 = patches.Rectangle((0, 2), 3, 4, linewidth=0, edgecolor='black', facecolor=colors[0])
+    job1 = patches.Rectangle((0, 2), 3, 4, linewidth=1, edgecolor=colors[0], facecolor=colors[0])
     ax.add_patch(job1)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((2, 0), 1, 2, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job2 = patches.Rectangle((2, 0), 1, 2, linewidth=1, edgecolor=colors[2], facecolor=colors[2])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((3, 0), 2.5, 4, linewidth=0, edgecolor='black', facecolor=colors[2])
+    job2 = patches.Rectangle((3, 0), 2.5, 4, linewidth=1, edgecolor=colors[2], facecolor=colors[2])
     ax.add_patch(job2)
 
     # 添加Job-2的矩形
-    job2 = patches.Rectangle((0, 0), 2, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((0, 0), 2, 2, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((3, 4), 5, 2, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((3, 4), 5, 2, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job2)
-    job2 = patches.Rectangle((5.5, 0), 2.5, 4, linewidth=0, edgecolor='black', facecolor=colors[1])
+    job2 = patches.Rectangle((5.5, 0), 2.5, 4, linewidth=1, edgecolor=colors[1], facecolor=colors[1])
     ax.add_patch(job2)
 
     # 设置图的范围和标签
@@ -300,11 +300,11 @@ def get_metric(exp, metric="cer", t="endo_elasticity"):
 
     for seed in ["-seed0", "-seed1234", "-seed6666"] if t == "endo_elasticity" else ["-seed0"] * 3:
         try:
-            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{t}/{exp}{seed}/restart_0_rank_0.log"
+            file_path = f"/Users/nephren/code/cluster_schedule/Pollux/simulator/testbed_logs/bkp/motivation/{t}/{exp}{seed}/restart_0_rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
         except FileNotFoundError:
-            file_path = f"/home/cchen/yfliu/ares/bkp/motivation/{t}/{exp}{seed}/rank_0.log"
+            file_path = f"/Users/nephren/code/cluster_schedule/Pollux/simulator/testbed_logs/bkp/motivation/{t}/{exp}{seed}/rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
 
@@ -335,8 +335,8 @@ def plot_with_range(ax, epochs, metrics, label, t="endo_elasticity", color=None,
 
 
 def fig3():
-    fontsize = 35
-    legend_fontsize = 22
+    fontsize = 21
+    legend_fontsize = 21
     linewidth = 2
     markersize = 10
 
@@ -358,7 +358,7 @@ def fig3():
 
     plt.style.use('ggplot')
     fig, ax = plt.subplots(figsize=(8, 7))
-
+    3
     app = {
         "deepspeech2-5": "2-GPU",
         "deepspeech2-4": "4-GPU",
@@ -435,9 +435,9 @@ def fig3():
 
 if __name__ == '__main__':
     # 调度示意图
-    fig1()
-    fig2()
-    fig1_()
-    fig2_()
+    # fig1()
+    # fig2()
+    # fig1_()
+    # fig2_()
     # 内生弹性精度
-    # fig3()
+    fig()
