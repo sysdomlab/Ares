@@ -23,7 +23,8 @@ policies = [
 ]
 exp_name = "Simulator-Fidelity"
 
-python3 = "/home/cchen/miniconda3/envs/yfliu/bin/python3"
+python3 = "/opt/miniconda3/bin/python"
+python3 = "/opt/miniconda3/envs/Ares/bin/python"
 
 # 构建要执行的命令列表
 commands = []

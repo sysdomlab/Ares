@@ -18,6 +18,7 @@ from collect_result import get_data_from_raw_log, get_all_jct_from_raw_log, get_
 
 colors = ['#e24a33', '#348abd', '#988ed5', '#777777', "#fbc15e", "#8eba41", "#ffb4b8", '#846358']
 
+plt.rcParams['font.family'] = 'Heiti TC'
 
 def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21):
     linewidth = 2
@@ -31,10 +32,10 @@ def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
     # Plotting the bar chart
     grouped_df.plot(kind='bar', ax=ax, legend=False, color=colors)
 
-    if metric == "Unfair Fraction":
+    if metric == "Unfair Fraction" or metric == "不公平任务比例":
         ax.set_ylim(0, 1)
 
-    if metric == "Worst FTF":
+    if metric == "Worst FTF" or metric == "最坏完成时间公平性":
         # Use logarithmic scale for y-axis
         ax.set_yscale('log')
 
@@ -49,8 +50,9 @@ def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
         ax.title.set_text(f"{trace_name[wl_set]}")
     ax.title.set_fontsize(fontsize)
     ax.title.set_color('black')
-    ax.set_xlabel('Trace ID', fontsize=fontsize, color='black')
-    ax.set_ylabel(f'{metric}', fontsize=fontsize, color='black')
+    ax.set_xlabel('跟踪序号', fontsize=fontsize, color='black')
+
+    ax.set_ylabel(f'{metric}' if metric else '', fontsize=fontsize, color='black')
     ax.set_xticks(ax.get_xticks())
     ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=fontsize, color='black')
     ax.set_yticks(ax.get_yticks())
@@ -67,14 +69,22 @@ def plot_grouped_bar_v2(ax, src, wl_set, metric, fontsize=32, legend_fontsize=21
 def fig2_sim_all_jct_and_ftf_v2():
     workload_sets = ["philly", "saturn", "newtrace"]
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_plot")
-    fontsize = 37
-    figsize = (33, 8)
+    fontsize = 50
+    figsize = (32, 32)
     rect = [0, 0, 1, 0.9]
-    bbox_to_anchor = (0.5, 1.05)
+    bbox_to_anchor = (0.5, 1.0)
+    ncol = 4
 
     # 1. avg jct
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=figsize)  # Create 1 row and 3 columns of subplots
+    fig, axs = plt.subplots(3, 1, figsize=figsize)  # Create 1 row and 3 columns of subplots
+
+    fig.patch.set_facecolor('white')
+    for ax in axs:
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_color('black')
+        ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
 
     for i, workload_set in enumerate(workload_sets):
         results_data = get_data_from_raw_log(workload_set, "avg_jct")
@@ -86,11 +96,11 @@ def fig2_sim_all_jct_and_ftf_v2():
         # print(reduce.mean())
         # print(reduce.mean().min())
         print(f"min_val: {reduce.mean().min()}, max_val: {reduce.mean().max()}")
-        plot_grouped_bar_v2(axs[i], df, workload_set, "Avg. JCT (hrs)", fontsize)
+        plot_grouped_bar_v2(axs[i], df, workload_set, "平均完成时间（小时）", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=8, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
+    fig.legend(handles, labels, ncol=ncol, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
                frameon=False)
 
     plt.tight_layout(rect=rect)  # Adjust layout to prevent clipping of labels and legend
@@ -102,7 +112,14 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # 1. p99 jct
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=figsize)  # Create 1 row and 3 columns of subplots
+    fig, axs = plt.subplots(3, 1, figsize=figsize)  # Create 1 row and 3 columns of subplots
+
+    fig.patch.set_facecolor('white')
+    for ax in axs:
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_color('black')
+        ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
 
     for i, workload_set in enumerate(workload_sets):
         results_data = get_data_from_raw_log(workload_set, "p99_jct")
@@ -114,11 +131,11 @@ def fig2_sim_all_jct_and_ftf_v2():
         # print(reduce.mean())
         # print(reduce.mean().min())
         print(f"min_val: {reduce.mean().min()}, max_val: {reduce.mean().max()}")
-        plot_grouped_bar_v2(axs[i], df, workload_set, "P99 JCT (hrs)", fontsize)
+        plot_grouped_bar_v2(axs[i], df, workload_set, "P99 完成时间（小时）", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=8, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
+    fig.legend(handles, labels, ncol=ncol, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
                frameon=False)
 
     plt.tight_layout(rect=rect)  # Adjust layout to prevent clipping of labels and legend
@@ -130,7 +147,14 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # 2. Unfair Job Fraction
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=figsize)  # Create 1 row and 3 columns of subplots
+    fig, axs = plt.subplots(3, 1, figsize=figsize)  # Create 1 row and 3 columns of subplots
+
+    fig.patch.set_facecolor('white')
+    for ax in axs:
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_color('black')
+        ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
 
     for i, workload_set in enumerate(workload_sets):
         real_jct = get_all_jct_from_raw_log(workload_set)
@@ -150,11 +174,11 @@ def fig2_sim_all_jct_and_ftf_v2():
         df = pd.DataFrame(results_data)
         all_data, improve, reduce = print_improve_reduce(df, [])
         print(f"min_val: {reduce.mean().min()}, max_val: {reduce.mean().max()}")
-        plot_grouped_bar_v2(axs[i], df, workload_set, "Unfair Fraction", fontsize)
+        plot_grouped_bar_v2(axs[i], df, workload_set, "不公平任务比例", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=8, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
+    fig.legend(handles, labels, ncol=ncol, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
                frameon=False)
 
     plt.tight_layout(rect=rect)  # Adjust layout to prevent clipping of labels and legend
@@ -166,7 +190,14 @@ def fig2_sim_all_jct_and_ftf_v2():
 
     # 3. Worst finish time fairness
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=figsize)  # Create 1 row and 3 columns of subplots
+    fig, axs = plt.subplots(3, 1, figsize=figsize)  # Create 1 row and 3 columns of subplots
+
+    fig.patch.set_facecolor('white')
+    for ax in axs:
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_color('black')
+        ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
 
     for i, workload_set in enumerate(workload_sets):
         real_jct = get_all_jct_from_raw_log(workload_set)
@@ -187,11 +218,11 @@ def fig2_sim_all_jct_and_ftf_v2():
         all_data, improve, reduce = print_improve_reduce(df, [])
         print(df.groupby(['workload', 'algo'])['res'].mean().unstack()["Ares"])
         print(f"min_val: {reduce.mean().min()}, max_val: {reduce.mean().max()}")
-        plot_grouped_bar_v2(axs[i], df, workload_set, "Worst FTF", fontsize)
+        plot_grouped_bar_v2(axs[i], df, workload_set, "最坏完成时间公平性", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=8, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
+    fig.legend(handles, labels, ncol=ncol, loc='upper center', bbox_to_anchor=bbox_to_anchor, fontsize=fontsize,
                frameon=False)
 
     plt.tight_layout(rect=rect)  # Adjust layout to prevent clipping of labels and legend
@@ -334,16 +365,16 @@ def plot_grouped_err_bar_combined(ax, algorithms, testbed_data, simulation_data,
 
     rects1 = ax.bar(x - width / 2 - 0.05, testbed_jct_means, width, label='Real',
                     yerr=testbed_jct_errors, capsize=5, error_kw={'elinewidth': 2},
-                    color=colors, hatch='*')
+                    color=colors, hatch='/')
     rects2 = ax.bar(x + width / 2 + 0.05, simulation_jct_means, width, label='Simulated',
                     yerr=simulation_jct_errors, capsize=5, error_kw={'elinewidth': 2},
                     color=colors, hatch='x')
 
-    if ylabel == "Unfair Fraction":
+    if ylabel == "Unfair Fraction" or ylabel == "不公平任务比例":
         ax.set_ylim(0, 1)
         ax.set_yticks(np.arange(0, 1.1, 0.25))
 
-    if ylabel == "Worst FTF":
+    if ylabel == "Worst FTF" or ylabel == "最坏完成时间公平性":
         # Use logarithmic scale for y-axis
         ax.set_yscale('log')
 
@@ -366,9 +397,8 @@ def plot_grouped_err_bar_combined(ax, algorithms, testbed_data, simulation_data,
 
 
 def fig1_physical_jct_ftf_with_err_bar_v2():
-    testbed_path = "/home/cchen/yfliu/ares/bkp/testbed/"
-    simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/"
-                       "Simulator-Fidelity/workloads-4h-40j/workload-6/")
+    testbed_path = "/Users/nephren/code/cluster_schedule/Pollux/simulator/testbed_logs/testbed/"
+    simulation_path = "/Users/nephren/code/cluster_schedule/Pollux/simulator/simulator_logs/Simulator-Fidelity/workloads-4h-40j/workload-6/"
     # algorithms = ["Ares", "Gavel", "Themis", "AlloX", "Tiresias", "Optimus", "Pollux"]
     algorithms = ["Ares", "Gavel", "Themis", "AlloX", "Tiresias", "Optimus", "Pollux", "Lucid"]
     algos = [algo_name[i] for i in algorithms]
@@ -427,23 +457,30 @@ def fig1_physical_jct_ftf_with_err_bar_v2():
     print(f"Worst FTF reduced: {improved}")
 
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 3, figsize=(14, 4), sharey=False)
+    fig, axs = plt.subplots(3, 1, figsize=(14, 10), sharey=False)
 
-    plot_grouped_err_bar_combined(axs[0], algorithms, testbed_jct, simulation_jct, colors, ylabel='Avg. JCT (hrs)')
+    fig.patch.set_facecolor('white')
+    for ax in axs:
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_color('black')
+        ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
+
+    plot_grouped_err_bar_combined(axs[0], algorithms, testbed_jct, simulation_jct, colors, ylabel='平均任务完成时间 (小时)')
     plot_grouped_err_bar_combined(axs[1], algorithms, testbed_unfair, simulation_unfair, colors,
-                                  ylabel='Unfair Fraction')
+                                  ylabel='不公平任务比例')
     plot_grouped_err_bar_combined(axs[2], algorithms, testbed_worst_ftf, simulation_worst_ftf, colors,
-                                  ylabel='Worst FTF')
+                                  ylabel='最坏完成时间公平性')
 
     handles = ([plt.Rectangle((0, 0), 1, 1,
                               hatch=hatch, facecolor='white', edgecolor='black', lw=1)
                 for hatch in ["/", "x"]] +
                [plt.Rectangle((0, 0), 1, 1, color=color)
                 for color in colors])
-    fig.legend(handles, ["Real", "Simulated"] + algorithms, ncol=5, loc='upper center',
+    fig.legend(handles, ["真实值", "模拟值"] + algorithms, ncol=5, loc='upper center',
                bbox_to_anchor=(0.5, 1.0), fontsize=fontsize, frameon=False)
 
-    fig.tight_layout(rect=[0, 0, 1, 0.8])
+    fig.tight_layout(rect=[0, 0, 1, 0.9])
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_testbed_simulation")
     plt.savefig(save_path + ".jpg")
     plt.savefig(save_path + ".pdf")
@@ -588,13 +625,13 @@ def plot_cdf(ax, data, xlabel, fontsize=32, legend_fontsize=19, linewidth=2):
     ax.set_yticks(ax.get_yticks())
     ax.set_yticklabels([f"{tick:.2}" for tick in ax.get_yticks()], fontsize=fontsize, color='black')
     ax.set_xlabel(xlabel, fontsize=fontsize, color='black')
-    ax.set_ylabel("Fraction of Jobs", fontsize=fontsize, color='black')
+    ax.set_ylabel("任务比例", fontsize=fontsize, color='black')
 
 
 def fig3_ftf_cdf():
-    fontsize = 21
+    fontsize = 25
 
-    simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/backup/"
+    simulation_path = ("/Users/nephren/code/cluster_schedule/Pollux/simulator/simulator_logs/backup/"
                        "Simulation-16nodes/saturn/workload-2")
     algorithms = ['Ares', 'Gavel', 'Themis', 'AlloX', 'Tiresias', 'Optimus', 'Pollux', 'Lucid']
 
@@ -617,15 +654,23 @@ def fig3_ftf_cdf():
     }
 
     plt.style.use('ggplot')
-    fig, axs = plt.subplots(1, 2, figsize=(16, 6))  # Create 1 row and 2 columns of subplots
-    plot_cdf(axs[0], jct_data, "Job Completion Time (hrs)", fontsize=fontsize)
-    plot_cdf(axs[1], ftf_data, "Finish Time Fairness Ratio", fontsize=fontsize)
+    fig, axs = plt.subplots(2, 1, figsize=(16, 16))  # Create 1 row and 2 columns of subplots
+
+    fig.patch.set_facecolor('white')
+    for ax in axs:
+        ax.set_facecolor('white')
+        for spine in ax.spines.values():
+            spine.set_color('black')
+        ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
+
+    plot_cdf(axs[0], jct_data, "任务完成时间 (小时)", fontsize=fontsize)
+    plot_cdf(axs[1], ftf_data, "任务完成时间公平性", fontsize=fontsize)
 
     # Customize the legend for both plots
     handles, labels = axs[0].get_legend_handles_labels()
     fig.legend(handles, labels, ncol=4, loc='upper center', bbox_to_anchor=(0.5, 1.0), fontsize=fontsize, frameon=False)
 
-    plt.tight_layout(rect=[0, 0, 1, 0.8])  # Adjust layout to prevent clipping of labels and legend
+    plt.tight_layout(rect=[0, 0, 1, 0.9])  # Adjust layout to prevent clipping of labels and legend
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_cdf")
     plt.savefig(save_path + ".pdf")
     plt.savefig(save_path + ".png")
@@ -690,7 +735,7 @@ def fig3_ftf_cdf_v0():
 
 
 def fig4_visualized_schedules():
-    simulation_path = ("/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/backup/"
+    simulation_path = ("/Users/nephren/code/cluster_schedule/Pollux/simulator/simulator_logs/backup/"
                        "Simulation-16nodes/saturn/workload-2")
     # algorithms = ['Ares', 'Optimus', 'Pollux', 'Tiresias']
     algorithms = ['Ares', 'Pollux', 'Gavel', 'Tiresias']
@@ -701,11 +746,11 @@ def fig4_visualized_schedules():
 
     num_machines, num_gpus_per_machine = 16, 4
     colors = ['#ffffff', '#a1daea', '#007db8', '#ffaa5b', '#e60018']
-    task_labels = ['Free', 'Small', 'Medium', 'Large', '(X)Large']
+    task_labels = ['Free', '小型', '中型', '大型', '超大型']
 
-    fig, axs = plt.subplots(2, 2, figsize=(32, 12))
+    fig, axs = plt.subplots(4, 1, figsize=(32, 34))
     axs = axs.flatten()
-    fontsize = 36
+    fontsize = 45
     title_fontsize = 42
     spine_width = 2
 
@@ -726,8 +771,8 @@ def fig4_visualized_schedules():
                     width = 6
                 ax.add_patch(plt.Rectangle((time_step, gpu_id), width, 1, color=color, alpha=0.7))
 
-        ax.set_xlabel('Round', fontsize=fontsize)
-        ax.set_ylabel('GPU ID', fontsize=fontsize)
+        ax.set_xlabel('调度轮次', fontsize=fontsize)
+        ax.set_ylabel('GPU 序号', fontsize=fontsize)
         ax.set_xticks(range(0, max_time_steps + 1, 200))
         ax.set_yticks(range(0, num_machines * num_gpus_per_machine + 1, num_gpus_per_machine * 8))
         ax.tick_params(axis='x', labelsize=fontsize)
@@ -744,13 +789,14 @@ def fig4_visualized_schedules():
     legend_patches = [Patch(color=color, label=label) for color, label in zip(colors[1:], task_labels[1:])]
     fig.legend(handles=legend_patches,
                loc='upper center',
-               bbox_to_anchor=(0.5, 1.025),
+               bbox_to_anchor=(0.5, 1.),
                ncol=5,
                fontsize=fontsize,
                frameon=False)
     plt.tight_layout(rect=[0, 0, 1, 0.94])
     plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"visualized_schedules") + ".pdf")
     plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"visualized_schedules") + ".png")
+    plt.savefig(os.path.join(os.path.abspath(os.path.dirname(__file__)), f"visualized_schedules") + ".jpg")
     plt.show()
     plt.clf()
 
@@ -778,14 +824,22 @@ def overhead():
     asymmetric_error = [lower_errors, upper_errors]
 
     # 绘制带误差条的折线图
-    labelsize = 13
-    fontsize = 13
+    labelsize = 14
+    fontsize = 14
 
     plt.style.use('ggplot')
-    plt.figure(figsize=(5, 4))
+    plt.figure(figsize=(10, 5))
+
+    plt.gcf().patch.set_facecolor('white')
+    ax = plt.gca()
+    ax.set_facecolor('white')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
+
     plt.errorbar(gpu_size, medians, yerr=asymmetric_error, fmt='-o', capsize=5, capthick=2, elinewidth=2)
-    plt.xlabel('Cluster size (#GPUs)', fontsize=labelsize, color='black')
-    plt.ylabel('Policy runtime (s)', fontsize=labelsize, color='black')
+    plt.xlabel('集群规模（GPU 数量）', fontsize=labelsize, color='black')
+    plt.ylabel('策略运行时间（秒）', fontsize=labelsize, color='black')
     plt.xticks(fontsize=fontsize, color='black')
     plt.yticks(fontsize=fontsize, color='black')
     plt.tight_layout()  # 调整布局以防止标签被裁剪
@@ -821,9 +875,17 @@ def sensitivity():
 
     # Set the style and figure size for the plot
     plt.style.use('ggplot')
-    plt.figure(figsize=(5, 4))
-    labelsize = 13
-    fontsize = 13
+    plt.figure(figsize=(10, 5))
+
+    plt.gcf().patch.set_facecolor('white')
+    ax = plt.gca()
+    ax.set_facecolor('white')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
+
+    labelsize = 14
+    fontsize = 14
 
     for workload_set, workload_name, marker in zip(workload_sets, workload_names, markers):
         # Initialize lists to store median and percentile values
@@ -834,6 +896,7 @@ def sensitivity():
         results_data = get_data_from_raw_log(workload_set, "avg_jct", trans=False)
         # Convert the results to a dataframe
         df = pd.DataFrame(results_data)
+        print(df)
 
         # Iterate over the range of scalability thresholds
         for i in np.arange(0.55, 1.0, 0.05):
@@ -855,8 +918,8 @@ def sensitivity():
         plt.fill_between(thresholds, percentiles_25, percentiles_75, alpha=0.2)
 
     # Add labels to the plot
-    plt.xlabel('Efficiency Threshold', fontsize=labelsize, color='black')
-    plt.ylabel('Average JCT (hrs)', fontsize=labelsize, color='black')
+    plt.xlabel('扩展控制阈值', fontsize=labelsize, color='black')
+    plt.ylabel('平均任务完成时间（小时）', fontsize=labelsize, color='black')
     plt.xticks(fontsize=fontsize, color='black')
     plt.yticks(fontsize=fontsize, color='black')
     plt.legend(fontsize=fontsize)  # Add legend for the different workload sets
@@ -870,14 +933,21 @@ def restart_num():
     workload_sets = ["newtrace"]
     # workload_sets = ["philly"]
     save_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), "combined_restarts")
-    fontsize = 21
-    figsize = (16, 6)
-    rect = [0, 0, 1, 0.85]
+    fontsize = 14
+    figsize = (10, 5)
+    rect = [0, 0, 1, 0.9]
 
     # 1. avg jct
     plt.style.use('ggplot')
     fig, axs = plt.subplots(1, 1, figsize=figsize)  # Create 1 row and 3 columns of subplots
     axs = [axs]
+
+    plt.gcf().patch.set_facecolor('white')
+    ax = plt.gca()
+    ax.set_facecolor('white')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
 
     for i, workload_set in enumerate(workload_sets):
         results_data = get_data_from_raw_log(workload_set, "restarts", exclude=["tiresias", "lucid"])
@@ -889,7 +959,7 @@ def restart_num():
         # print(reduce.mean())
         # print(reduce.mean().min())
         print(f"min_val: {reduce.mean().min()}, max_val: {reduce.mean().max()}")
-        plot_grouped_bar_v2(axs[i], df, None, "Avg. Preemption Counts", fontsize)
+        plot_grouped_bar_v2(axs[i], df, None, "平均抢占次数", fontsize)
 
     # Customize the legend
     handles, labels = axs[0].get_legend_handles_labels()
@@ -975,25 +1045,23 @@ def pollux_deep_dive(path="/home/cchen/yfliu/cluster_schedule/pollux/simulator/s
 
 if __name__ == '__main__':
     # nohup python3 collect_result.py > collect_result.log 2>&1 &
-    os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/backup/Simulation-16nodes")
-    # fig2_sim_all_jct_and_ftf_v2()  # for paper
-    # fig2_sim_all_jct_and_ftf_v3()
+    os.chdir(f"/Users/nephren/code/cluster_schedule/Pollux/simulator/simulator_logs/Simulation-16nodes")
+    fig2_sim_all_jct_and_ftf_v2()  # for paper
 
-    # fig1_physical_jct_ftf_with_err_bar_v1()
     fig1_physical_jct_ftf_with_err_bar_v2()  # for paper
 
-    # fig3_ftf_cdf()  # for paper
-    # fig3_ftf_cdf_v0()
+    fig3_ftf_cdf()  # for paper
 
-    # fig4_visualized_schedules()
+    fig4_visualized_schedules()  # for paper
 
-    # os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-scale")
-    # overhead()
+    os.chdir(f"/Users/nephren/code/cluster_schedule/pollux/simulator/simulator_logs/Simulation-scale")
+    overhead()  # for paper
 
-    # os.chdir(f"/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/Simulation-sensitivity")
-    # sensitivity()
+    os.chdir(f"/Users/nephren/code/cluster_schedule/Pollux/simulator/simulator_logs/Simulation-sensitivity")
+    sensitivity()  # for paper
 
-    # restart_num()
+    os.chdir(f"/Users/nephren/code/cluster_schedule/Pollux/simulator/simulator_logs/Simulation-16nodes")
+    restart_num()  # for paper
 
     # root = "/home/cchen/yfliu/cluster_schedule/pollux/simulator/simulator_logs/pollux_deep_dive"
     # for i in ["saturn"]:

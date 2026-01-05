@@ -6,9 +6,9 @@ from tqdm import tqdm
 workloads = [
     f"{name}/workload-{j}.csv"
     for name in [
-        "newtrace",
-        # "philly",
-        # "saturn",
+        # "newtrace",
+        "philly",
+        "saturn",
     ]
     for j in [1, 2, 3, 4, 5, 6, 7, 8]
 ]
@@ -25,7 +25,7 @@ policies = [
 ]
 exp_name = "Simulation-sensitivity"
 
-python3 = "/home/cchen/miniconda3/envs/yfliu/bin/python3"
+python3 = "/opt/miniconda3/envs/Ares/bin/python"
 
 # 构建要执行的命令列表
 commands = []

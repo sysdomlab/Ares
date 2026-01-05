@@ -13,6 +13,8 @@ markersize = 10
 figsize = (7, 4)
 colors = ['#e24933', '#348abd', '#fbc15e']
 
+plt.rcParams['font.family'] = 'Heiti TC'
+
 
 def fig1():
     # 创建一个新的图形
@@ -35,8 +37,8 @@ def fig1():
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
     plt.ylim(0, 6)
-    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
-    plt.ylabel('GPU #', fontsize=fontsize, color='black')
+    plt.xlabel('时间（小时）', fontsize=fontsize, color='black')
+    plt.ylabel('GPU 编号', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
 
@@ -54,11 +56,11 @@ def fig1():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(3, 5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(3, 5, '作业-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(3, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(3, 3, '作业-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(4, 1, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(4, 1, '作业-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
 
     # 添加图例
@@ -100,8 +102,8 @@ def fig2():
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
     plt.ylim(0, 6)
-    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
-    plt.ylabel('GPU #', fontsize=fontsize, color='black')
+    plt.xlabel('时间（小时）', fontsize=fontsize, color='black')
+    plt.ylabel('GPU 编号', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
 
@@ -119,11 +121,11 @@ def fig2():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(1, 3, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(1, 3, '作业-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(3, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(3, 3, '作业-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(6, 3, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(6, 3, '作业-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
 
     # 添加图例
@@ -177,8 +179,8 @@ def fig1_():
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
     plt.ylim(0, 6)
-    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
-    plt.ylabel('GPU #', fontsize=fontsize, color='black')
+    plt.xlabel('时间 (小时)', fontsize=fontsize, color='black')
+    plt.ylabel('GPU 编号', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
 
@@ -196,11 +198,11 @@ def fig1_():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(2.5, 5, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(2.5, 5, '作业-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(3.5, 3, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(3.5, 3, '作业-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(4.5, 1, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(4.5, 1, '作业-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
 
     # 添加图例
@@ -248,8 +250,8 @@ def fig2_():
     # 设置图的范围和标签
     plt.xlim(0, 8.5)
     plt.ylim(0, 6)
-    plt.xlabel('Time (hrs)', fontsize=fontsize, color='black')
-    plt.ylabel('GPU #', fontsize=fontsize, color='black')
+    plt.xlabel('时间 (小时)', fontsize=fontsize, color='black')
+    plt.ylabel('GPU 编号', fontsize=fontsize, color='black')
     plt.xticks(range(9), fontsize=fontsize, color='black')
     plt.yticks([0.5, 1.5, 2.5, 3.5, 4.5, 5.5], [1, 2, 3, 4, 5, 6], fontsize=fontsize, color='black')
 
@@ -267,11 +269,11 @@ def fig2_():
     ax.tick_params(left=False, bottom=False)  # 隐藏刻度
 
     # 添加文字
-    ax.text(1.5, 4, 'Job-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(1.5, 4, '作业-1', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(4, 2, 'Job-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(4, 2, '作业-3', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
-    ax.text(6.75, 3, 'Job-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
+    ax.text(6.75, 3, '作业-2', horizontalalignment='center', verticalalignment='center', fontsize=fontsize,
             color='white')
 
     # 添加图例
@@ -300,11 +302,11 @@ def get_metric(exp, metric="cer", t="endo_elasticity"):
 
     for seed in ["-seed0", "-seed1234", "-seed6666"] if t == "endo_elasticity" else ["-seed0"] * 3:
         try:
-            file_path = f"/Users/nephren/code/cluster_schedule/Pollux/simulator/testbed_logs/bkp/motivation/{t}/{exp}{seed}/restart_0_rank_0.log"
+            file_path = f"/Users/nephren/code/cluster_schedule/Pollux/simulator/testbed_logs/motivation/{t}/{exp}{seed}/restart_0_rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
         except FileNotFoundError:
-            file_path = f"/Users/nephren/code/cluster_schedule/Pollux/simulator/testbed_logs/bkp/motivation/{t}/{exp}{seed}/rank_0.log"
+            file_path = f"/Users/nephren/code/cluster_schedule/Pollux/simulator/testbed_logs/motivation/{t}/{exp}{seed}/rank_0.log"
             with open(file_path, "r") as f:
                 text = f.read()
 
@@ -357,8 +359,14 @@ def fig3():
     ]
 
     plt.style.use('ggplot')
-    fig, ax = plt.subplots(figsize=(8, 7))
-    3
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
+
     app = {
         "deepspeech2-5": "2-GPU",
         "deepspeech2-4": "4-GPU",
@@ -381,11 +389,11 @@ def fig3():
               f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
         plot_with_range(ax, epochs, metrics, label, color=colors[label], marker=markers['endo_elasticity'])
 
-    ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
-    ax.set_ylabel('Character Error Rate', fontsize=fontsize, color='black')
+    ax.set_xlabel('轮次', fontsize=fontsize, color='black')
+    ax.set_ylabel('字符错误率', fontsize=fontsize, color='black')
     ax.tick_params(axis='both', which='major', labelsize=fontsize, colors='black')
 
-    ax.legend(custom_lines, ['16-GPU', '8-GPU', '4-GPU', '2-GPU', 'endo-elasticity', 'exo-elasticity'],
+    ax.legend(custom_lines, ['16-GPU', '8-GPU', '4-GPU', '2-GPU', '内生弹性', '外生弹性'],
               fontsize=legend_fontsize)
 
     plt.tight_layout()
@@ -395,7 +403,13 @@ def fig3():
     plt.clf()
 
     plt.style.use('ggplot')
-    fig, ax = plt.subplots(figsize=(8, 7))
+    fig, ax = plt.subplots(figsize=(14, 7))
+
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('white')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
 
     app = {
         "imagenet-5": "2-GPU",
@@ -419,11 +433,11 @@ def fig3():
               f"diff: {np.max([i[-1] for i in metrics]) - np.min([i[-1] for i in metrics])}")
         plot_with_range(ax, epochs, metrics, label, color=colors[label], marker=markers['endo_elasticity'])
 
-    ax.set_xlabel('Epoch', fontsize=fontsize, color='black')
-    ax.set_ylabel('Top-5 Accuracy', fontsize=fontsize, color='black')
+    ax.set_xlabel('轮次', fontsize=fontsize, color='black')
+    ax.set_ylabel('Top-5 准确率', fontsize=fontsize, color='black')
     ax.tick_params(axis='both', which='major', labelsize=fontsize, colors='black')
 
-    ax.legend(custom_lines, ['16-GPU', '8-GPU', '4-GPU', '2-GPU', 'endo-elasticity', 'exo-elasticity'],
+    ax.legend(custom_lines, ['16-GPU', '8-GPU', '4-GPU', '2-GPU', '内生弹性', '外生弹性'],
               fontsize=legend_fontsize)
 
     plt.tight_layout()
@@ -435,9 +449,9 @@ def fig3():
 
 if __name__ == '__main__':
     # 调度示意图
-    # fig1()
-    # fig2()
-    # fig1_()
-    # fig2_()
+    fig1()
+    fig2()
+    fig1_()
+    fig2_()
     # 内生弹性精度
-    fig()
+    fig3()

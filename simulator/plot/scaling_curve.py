@@ -6,6 +6,8 @@ from matplotlib import pyplot as plt
 
 from policy.applications import APPLICATIONS
 
+plt.rcParams['font.family'] = 'Heiti TC'
+
 
 def predict_step_time(app, num_replicas, global_bsz):
     placement = ()
@@ -66,8 +68,16 @@ if __name__ == '__main__':
     markersize = 10
 
     # 1. iso-efficiency
-    plt.figure(figsize=(8, 7))
+    plt.figure(figsize=(14, 7))
     plt.style.use('ggplot')
+
+    plt.gcf().patch.set_facecolor('white')
+    ax = plt.gca()
+    ax.set_facecolor('white')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
+
     num_replicas_list = [1, 2, 4, 8, 16, 32]
     x = np.log2(num_replicas_list)
 
@@ -81,8 +91,8 @@ if __name__ == '__main__':
     plt.yticks(fontsize=fontsize, color='black')
 
     # plt.title("Efficiency", fontsize=fontsize)
-    plt.xlabel("Number of GPUs", fontsize=fontsize, color='black')
-    plt.ylabel("Normalized Throughput", fontsize=fontsize, color='black')
+    plt.xlabel("GPU 数量", fontsize=fontsize, color='black')
+    plt.ylabel("归一化吞吐量", fontsize=fontsize, color='black')
     plt.legend(fontsize=legend_fontsize)
     plt.tight_layout()
     # plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)
@@ -91,9 +101,17 @@ if __name__ == '__main__':
     plt.show()
 
     # 2. speedup
-    plt.figure(figsize=(8, 7))
+    plt.figure(figsize=(14, 7))
     print(plt.style.available)
     plt.style.use('ggplot')
+
+    plt.gcf().patch.set_facecolor('white')
+    ax = plt.gca()
+    ax.set_facecolor('white')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.grid(color='lightgray', linestyle='--', linewidth=0.8)
+
     num_replicas_list = [1, 2, 4, 8, 16, 32]
     x = [0] + num_replicas_list
     plt.plot(x, x, color='black', linestyle='--', linewidth=linewidth, label="Linear", markersize=markersize)
@@ -107,8 +125,8 @@ if __name__ == '__main__':
     plt.yticks(xticks, xticks, fontsize=fontsize, color='black')
 
     # plt.title("Speedup", fontsize=fontsize)
-    plt.xlabel("Number of GPUs", fontsize=fontsize, color='black')
-    plt.ylabel("Normalized Throughput", fontsize=fontsize, color='black')
+    plt.xlabel("GPU 数量", fontsize=fontsize, color='black')
+    plt.ylabel("归一化吞吐量", fontsize=fontsize, color='black')
     plt.legend(fontsize=legend_fontsize)
     plt.tight_layout()
     # plt.subplots_adjust(left=left, right=right, top=top, bottom=bottom)

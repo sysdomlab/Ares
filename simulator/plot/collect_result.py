@@ -86,7 +86,11 @@ def get_avg_jct(log_file):
         capture_output=True,
         text=True
     )
-    res = float(result.stdout.strip().split()[-1]) / 60 / 60
+    try:
+        res = float(result.stdout.strip().split()[-1]) / 60 / 60
+    except Exception as e:
+        print(f"Error in {log_file}: {result.stderr}")
+        raise e
     return res
 
 
